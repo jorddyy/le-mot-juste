@@ -50,6 +50,9 @@ Public repo. Read `docs/DESIGN.md` for the why, `docs/TODO.md` for what is next.
 - **Offline.** A service worker (`vite-plugin-pwa`, config in `vite.config.ts`) precaches everything in
   `dist` matching its glob patterns; a new file type must be added there. Updates are never applied
   silently: `src/lib/update.ts` raises the "update available · reload" line.
+- **Sync is opt-in and generic.** `src/lib/sync.ts` talks to whatever URL/token the user types into
+  Settings (stored under `sync` in that browser, never exported). Never commit a real address or token.
+  Remote data goes through `parseBackup` like any import. `server/` holds the reference endpoint.
 - **No third-party requests at runtime**: fonts are self-hosted (`@fontsource-variable/fraunces`).
 - **Licences.** Lexique-derived numbers (rule percentages, word order) ship in `public/data`; its
   licence must be confirmed before the site is made public (see TODO). FLELex (CC BY-NC-SA) and

@@ -3,10 +3,11 @@ import { Progress } from './progress';
 import { PAIRS } from './lib/articles';
 import { T } from './lib/i18n';
 import { addRetry, dropRetry } from './lib/session';
-import { exportAll, importAll, load, logEvent, onWriteError, resetAll, saveCards, saveFlags, saveRetry, saveSettings } from './lib/store';
+import { exportAll, importAll, load, logEvent, loadSync, onWriteError, resetAll, saveCards, saveFlags, saveRetry, saveSettings, saveSync } from './lib/store';
 import { DEFAULTS, LEVELS, type ArtMode, type G, type Lang, type Level, type Rec, type Retry, type Rule, type Settings, type Skill, type Word } from './lib/types';
+import { syncOnce, type SyncConf } from './lib/sync';
 import { applyUpdate, onUpdateReady } from './lib/update';
-import { isDark } from './lib/validate';
+import { isDark, SCHEMA } from './lib/validate';
 import { Chunk, Trainer, type Ctx, type St } from './trainer';
 
 declare const __BUILD__: { version: string; commit: string; time: string };
@@ -73,6 +74,24 @@ export function App() {
   const [, bump] = useState(0);
   const [saveErr, setSaveErr] = useState(false);
   const [update, setUpdate] = useState(false);
+  const [sync, setSync] = useState<SyncConf>({ url: '', token: '' });
+  const [syncMsg, setSyncMsg] = useState('');
+  const live = useRef<{ settings: Settings; flags: Record<string, import('./lib/types').Flag>; version: string; conf: SyncConf | null; busy: Promise<void> | null }>({ settings: DEFAULTS, flags: {}, version: '', conf: null, busy: null });
+  /** Merge with the user's own sync server, if one is configured. Never throws; reports in Settings. */
+  const doSync = () => (live.current.busy ??= (async () => {
+    const { conf, settings: st, flags: fl, version } = live.current;
+    if (!conf) return;
+    try {
+      const merged = await syncOnce(conf, await exportAll({ settings: st, cards: cards.current, retry: retry.current, flags: fl }, version));
+      if (merged) {                 // another device did something: take it over, in storage and in memory
+        await importAll({ app: 'le-mot-juste', schema: SCHEMA, ...merged });
+        Object.assign(cards.current, merged.cards);
+        retry.current.g = merged.retry.g; retry.current.s = merged.retry.s;
+        setFlags(merged.flags);
+      }
+      setSyncMsg(`✓ ${new Date().toLocaleTimeString().slice(0, 5)}`);
+    } catch { setSyncMsg('✗'); }
+  })().finally(() => { live.current.busy = null; }));
   const [flags, setFlags] = useState<Record<string, import('./lib/types').Flag>>({});
   const copyFlags = () => navigator.clipboard?.writeText(Object.entries(flags).map(([id, f]) => `${id} (${f.skill === 'g' ? 'article' : 'mot'}): ${f.note || '—'}`).join('\n')).then(() => alert(L.copied), () => {});
   const cards = useRef<Record<string, Rec>>({});
@@ -82,12 +101,16 @@ export function App() {
   const dialog = useRef<HTMLDialogElement>(null), file = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    Promise.all([fetchData(), load()]).then(([d, saved]) => {
+    Promise.all([fetchData(), load(), loadSync()]).then(async ([d, saved, conf]) => {
       cards.current = saved.cards; retry.current = saved.retry; setFlags(saved.flags);
-      setSettings(saved.settings); setPersistent(saved.persistent); setData(d);
+      setSettings(saved.settings); setPersistent(saved.persistent);
+      live.current = { settings: saved.settings, flags: saved.flags, version: d.version, conf, busy: null };
+      if (conf) { setSync(conf); await Promise.race([doSync(), new Promise(r => setTimeout(r, 5000))]); }   // start from the newest progress
+      setData(d);
     }).catch(() => setErr(true));
     onWriteError(() => setSaveErr(true));
     onUpdateReady(() => setUpdate(true));
+    document.addEventListener('visibilitychange', () => { if (document.hidden) doSync(); });
   }, []);
   useEffect(() => {
     if (settings.theme) document.documentElement.dataset.theme = settings.theme; else delete document.documentElement.dataset.theme;
@@ -101,6 +124,11 @@ export function App() {
   const byId = useMemo(() => new Map((data?.words ?? []).map(w => [w.id, w])), [data]);
 
   if (err) return <main><p class="center">{L.loadErr}</p></main>;
+  live.current.settings = settings; live.current.flags = flags;
+  const saveSyncConf = () => {
+    const conf = sync.url.trim() && sync.token.trim() ? { url: sync.url.trim(), token: sync.token.trim() } : null;
+    live.current.conf = conf; saveSync(conf); setSyncMsg(conf ? '…' : ''); doSync();
+  };
   if (!data) return <main><p class="center muted">{L.loading}</p></main>;
 
   const ctx: Ctx = {
@@ -165,7 +193,7 @@ export function App() {
       {tab === 'r'
         ? <Rules data={data} ctx={ctx} />
         : tab === 'p' ? <Progress words={data.words} pool={pool} ctx={ctx} launch={launch} />
-        : <Trainer reviewOnly={reviewOnly} key={tkey} skill={tab} pool={pool} ctx={ctx} saved={sessions.current[tkey]} onState={s => { sessions.current = { ...sessions.current, [tkey]: s }; }} />}
+        : <Trainer reviewOnly={reviewOnly} key={tkey} skill={tab} pool={pool} ctx={ctx} saved={sessions.current[tkey]} onState={s => { if (s.done && !sessions.current[tkey]?.done) doSync(); sessions.current = { ...sessions.current, [tkey]: s }; }} />}
 
       <dialog ref={dialog} onClose={() => bump(n => n + 1)}>
         <h2>{L.settings}</h2>
@@ -177,6 +205,13 @@ export function App() {
           <button class="ghost danger" onClick={doReset}>{L.reset}</button>
           <input type="file" accept="application/json,.json" hidden ref={file} onChange={e => doImport((e.target as HTMLInputElement).files?.[0])} />
         </div>
+        <details class="sync">
+          <summary>{L.sync}</summary>
+          <input type="url" class="plain" placeholder="https://…" value={sync.url} onInput={e => { const url = (e.target as HTMLInputElement).value; setSync(c => ({ ...c, url })); }} />
+          <input type="password" class="plain" placeholder={L.syncToken} value={sync.token} autocomplete="off" onInput={e => { const token = (e.target as HTMLInputElement).value; setSync(c => ({ ...c, token })); }} />
+          <div class="row"><button class="ghost" onClick={saveSyncConf}>{L.syncNow}</button><span class="note">{syncMsg}</span></div>
+          <p class="note">{L.syncHelp}</p>
+        </details>
         <p class="note">{L.version} {__BUILD__.version} · {__BUILD__.commit} · {__BUILD__.time.slice(0, 10)}<br />{L.data} {data.version} · {data.words.length}</p>
         <button class="primary" onClick={() => dialog.current?.close()}>{L.close}</button>
       </dialog>

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.0 — 2026-11-14
+
+- Optional sync between devices through a server of your own (Settings → Sync): merges at start-up,
+  after each round and when you leave the app. A small reference server is in `server/`.
+
 ## 0.3.0 — 2026-11-14
 
 - Works offline: after one visit the app, fonts and word list are stored on the device (about 0.4 MB).

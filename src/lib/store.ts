@@ -1,4 +1,5 @@
-import { createStore, entries, getMany, promisifyRequest, set, setMany } from 'idb-keyval';
+import { createStore, entries, get, getMany, promisifyRequest, set, setMany } from 'idb-keyval';
+import type { SyncConf } from './sync';
 import type { Flag, LogEvent, Rec, Retry, Settings } from './types';
 import { normEvent, parseBackup, sanitizeFlags, sanitizeRetry, sanitizeSettings, SCHEMA } from './validate';
 
@@ -40,6 +41,9 @@ export async function load(): Promise<Saved> {
 export const saveSettings = (s: Settings) => guard(set('settings', s));
 export const saveCards = (c: Record<string, Rec>) => guard(set('cards', c));
 export const saveRetry = (r: Retry) => guard(set('retry', r));
+/** Sync address and token: kept in this browser only, never exported. */
+export const loadSync = (): Promise<SyncConf | null> => get('sync').then(c => (c && typeof c.url === 'string' && typeof c.token === 'string' ? c : null), () => null);
+export const saveSync = (c: SyncConf | null) => guard(set('sync', c));
 export const saveFlags = (f: Record<string, Flag>) => guard(set('flags', f));
 export const logEvent = (e: LogEvent) => guard(set(logKey(e), e, logStore), () => unsaved.push(e));
 

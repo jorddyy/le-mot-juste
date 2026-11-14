@@ -13,6 +13,6 @@
 - [ ] Other word types in the word trainer (verbs, adjectives, adverbs).
 - [ ] Derived forms: du/de la, au/à la, adjective agreement, then il/elle, le/la in sentences.
 - [ ] Add-a-word button and a personal list; pack mix setting.
-- [ ] Sync between devices (small endpoint on own server).
+- [x] Sync between devices: client + reference server (2026-11-14). The user's own endpoint still has to be deployed.
 - [ ] Pre-generated audio with a good voice.
 - [ ] Stats: words known per level, forecast, leeches (4+ lapses) with a mnemonic note field.
