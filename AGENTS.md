@@ -47,6 +47,9 @@ Public repo. Read `docs/DESIGN.md` for the why, `docs/TODO.md` for what is next.
 - **Versioning.** Bump `version` in `package.json` and add a `CHANGELOG.md` entry for every
   user-visible change. The app shows version, commit and build date, plus the data version (a hash
   of the word list).
+- **Offline.** A service worker (`vite-plugin-pwa`, config in `vite.config.ts`) precaches everything in
+  `dist` matching its glob patterns; a new file type must be added there. Updates are never applied
+  silently: `src/lib/update.ts` raises the "update available · reload" line.
 - **No third-party requests at runtime**: fonts are self-hosted (`@fontsource-variable/fraunces`).
 - **Licences.** Lexique-derived numbers (rule percentages, word order) ship in `public/data`; its
   licence must be confirmed before the site is made public (see TODO). FLELex (CC BY-NC-SA) and

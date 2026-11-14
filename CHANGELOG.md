@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.0 — 2026-11-14
+
+- Works offline: after one visit the app, fonts and word list are stored on the device (about 0.4 MB).
+- When a new version has been downloaded, an "update available · reload" line appears.
+
 ## 0.2.2 — 2026-11-14
 
 - Flag a card with the small ⚑ at its top right, with an optional note on what is wrong or confusing.

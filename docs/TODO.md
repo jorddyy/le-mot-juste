@@ -2,7 +2,7 @@
 
 ## Next
 - [x] Deploy: GitHub Pages via `.github/workflows/pages.yml` (2026-11-14).
-- [ ] Offline support (service worker with an "update available" prompt).
+- [x] Offline support: `vite-plugin-pwa`, prompt-style updates via `src/lib/update.ts` (2026-11-14). Test on a real phone.
 - [ ] Review the model-written definitions/examples; fix anything odd found while using the app.
 - [ ] Sibling burying: don't show a noun's gender and meaning cards in the same session.
 - [ ] Second senses for more two-gender nouns (la tour, la livre, le mode...), like `poste#n2`.

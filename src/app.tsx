@@ -5,6 +5,7 @@ import { T } from './lib/i18n';
 import { addRetry, dropRetry } from './lib/session';
 import { exportAll, importAll, load, logEvent, onWriteError, resetAll, saveCards, saveFlags, saveRetry, saveSettings } from './lib/store';
 import { DEFAULTS, LEVELS, type ArtMode, type G, type Lang, type Level, type Rec, type Retry, type Rule, type Settings, type Skill, type Word } from './lib/types';
+import { applyUpdate, onUpdateReady } from './lib/update';
 import { isDark } from './lib/validate';
 import { Chunk, Trainer, type Ctx, type St } from './trainer';
 
@@ -71,6 +72,7 @@ export function App() {
   const [tab, setTab] = useState<Tab>('g');
   const [, bump] = useState(0);
   const [saveErr, setSaveErr] = useState(false);
+  const [update, setUpdate] = useState(false);
   const [flags, setFlags] = useState<Record<string, import('./lib/types').Flag>>({});
   const copyFlags = () => navigator.clipboard?.writeText(Object.entries(flags).map(([id, f]) => `${id} (${f.skill === 'g' ? 'article' : 'mot'}): ${f.note || '—'}`).join('\n')).then(() => alert(L.copied), () => {});
   const cards = useRef<Record<string, Rec>>({});
@@ -85,6 +87,7 @@ export function App() {
       setSettings(saved.settings); setPersistent(saved.persistent); setData(d);
     }).catch(() => setErr(true));
     onWriteError(() => setSaveErr(true));
+    onUpdateReady(() => setUpdate(true));
   }, []);
   useEffect(() => {
     if (settings.theme) document.documentElement.dataset.theme = settings.theme; else delete document.documentElement.dataset.theme;
@@ -149,6 +152,7 @@ export function App() {
       </header>
       <Seg navigation value={tab} options={[['g', L.tabs.g], ['s', L.tabs.s], ['r', L.tabs.r], ['p', L.tabs.p]]} onChange={(t: Tab) => setTab(t)} />
       {!persistent && <p class="warn">{L.noSave}</p>}
+      {update && <p class="info">{L.updateReady} <button class="linkish" onClick={() => applyUpdate()}>{L.reload}</button></p>}
       {saveErr && <p class="warn">{L.saveFailed} <button class="linkish" onClick={doExport}>{L.exportB}</button></p>}
       {(tab === 'g' || tab === 's') && (
         <div class="controls">
