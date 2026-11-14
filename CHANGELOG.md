@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.5 — 2026-11-14
+
+- A round already in progress no longer shows a noun you have just answered in the other tab.
+
 ## 0.4.4 — 2026-11-14
 
 - Round summary: "needed another attempt" now counts only words missed in this round, and words carried

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { basePair, PAIRS, pickPair, type Pair } from './lib/articles';
 import type { Strings } from './lib/i18n';
-import { key, Rating, review, type Grade, type Item } from './lib/sched';
+import { dayStart, key, Rating, review, type Grade, type Item } from './lib/sched';
 import { progress } from './lib/progress';
 import { GAP, startRound } from './lib/session';
 import { checkAnswer, type Check } from './lib/text';
@@ -61,7 +61,23 @@ export function Trainer({ skill, pool, ctx, saved, onState, reviewOnly = false }
     };
   };
   // `saved` is the round this trainer was showing before the user visited another tab.
-  const [st, setSt] = useState<St>(() => saved ?? mk());
+  /**
+   * A round is planned in advance, and the other trainer may have been used since: drop the
+   * upcoming cards whose other side was answered today, so the same noun never shows up in both
+   * tabs on one day. Skipped words were never shown here; they are simply planned again later.
+   */
+  const prune = (s: St): St => {
+    if (s.done) return s;
+    const other: Skill = skill === 'g' ? 's' : 'g', start = dayStart(new Date());
+    const seenToday = (wd: Word) => { const last = cards[key(wd, other)]?.c.last_review; return !!last && new Date(last).getTime() >= start; };
+    const from = s.ans || s.revealed ? s.i + 1 : s.i;          // never take away the card being answered
+    const q = s.q.filter((it, idx) => idx < from || it.rep || !seenToday(it.w));
+    if (q.length === s.q.length) return s;
+    const total = Math.max(0, s.total - (s.q.length - q.length));
+    if (s.i >= q.length) return { ...s, q, total, ans: null, done: true };
+    return from === s.i ? { ...s, q, total, revealed: false, showEn: false, pair: pairFor(q[s.i].w) } : { ...s, q, total };
+  };
+  const [st, setSt] = useState<St>(() => (saved ? prune(saved) : mk()));
   const input = useRef<HTMLInputElement>(null), nextBtn = useRef<HTMLButtonElement>(null);
   const item = st.q[st.i], w = item?.w;
 
@@ -97,7 +113,7 @@ export function Trainer({ skill, pool, ctx, saved, onState, reviewOnly = false }
   const advance = (s: St): St => {
     const i = s.i + 1;
     return i >= s.q.length ? { ...s, i, ans: null, done: true }
-      : { ...s, i, ans: null, revealed: false, showEn: false, pair: pairFor(s.q[i].w) };
+      : prune({ ...s, i, ans: null, revealed: false, showEn: false, pair: pairFor(s.q[i].w) });
   };
 
   function answerG(g: G) {
