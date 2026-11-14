@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.2 — 2026-11-14
+
+- Use purple for feminine and teal for masculine in both themes, keeping gender distinct from red error feedback.
+
 ## 0.1.1 — 2026-11-14
 
 - A missed word now stays owed until you answer it correctly, even if you switch tab, change
