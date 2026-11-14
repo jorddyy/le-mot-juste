@@ -4,6 +4,7 @@
   LMJ_TOKENS  comma-separated secret tokens that may sync (required; use long random strings)
   LMJ_DIR     where documents are stored (default ./sync-data)
   LMJ_PORT    port on 127.0.0.1 (default 8787); put a TLS reverse proxy in front
+  LMJ_HOST    address to bind (default 127.0.0.1; use 0.0.0.0 inside a container that publishes no ports)
   LMJ_ORIGIN  value for Access-Control-Allow-Origin (default *; safe, auth is the bearer token)
 
 GET  /  -> 200 stored document | 404 nothing yet        PUT /  -> 204 stored
@@ -77,4 +78,4 @@ if __name__ == "__main__":
     if not TOKENS:
         raise SystemExit("Set LMJ_TOKENS to at least one token of 24+ characters.")
     os.makedirs(DIR, mode=0o700, exist_ok=True)
-    ThreadingHTTPServer(("127.0.0.1", int(os.environ.get("LMJ_PORT", "8787"))), Handler).serve_forever()
+    ThreadingHTTPServer((os.environ.get("LMJ_HOST", "127.0.0.1"), int(os.environ.get("LMJ_PORT", "8787"))), Handler).serve_forever()
