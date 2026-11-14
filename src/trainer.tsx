@@ -155,7 +155,7 @@ export function Trainer({ skill, pool, ctx, saved, onState, reviewOnly = false }
         <div class="progWrap"><div class="progress"><i style={{ width: '100%' }} /></div></div>
         <section class="card">
           {practised ? <>
-            <p class="def center">{L.summary(practised, new Set([...st.miss.map(wd => wd.id), ...st.q.filter(it => it.rep).map(it => it.w.id)]).size)}</p>
+            <p class="def center round-summary">{L.summary(practised, new Set([...st.miss.map(wd => wd.id), ...st.q.filter(it => it.rep).map(it => it.w.id)]).size)}</p>
             {st.miss.length ? <div><b>{L.review}</b>
               <ul class="miss">{st.miss.map(m => <li key={m.id}><span><Chunk w={m} mark /></span><span class="note">{m.en} <Pill w={m} ctx={ctx} /></span></li>)}</ul>
             </div> : <p class="center"><b>{L.perfect}</b></p>}

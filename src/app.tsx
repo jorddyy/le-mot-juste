@@ -20,9 +20,9 @@ async function fetchData(): Promise<Data> {
   return { version: words.version, words: words.words, rules: rules.rules, source: rules.source };
 }
 
-function Seg<V extends string>({ value, options, onChange, small, label }: { value: V; options: [V, string][]; onChange: (v: V) => void; small?: boolean; label?: string }) {
+function Seg<V extends string>({ value, options, onChange, small, label, navigation }: { value: V; options: [V, string][]; onChange: (v: V) => void; small?: boolean; label?: string; navigation?: boolean }) {
   return (
-    <div class={`seg ${small ? 'small' : ''}`} role="group" aria-label={label}>
+    <div class={`seg ${small ? 'small' : ''} ${navigation ? 'main-tabs' : ''}`} role="group" aria-label={label}>
       {options.map(([v, text]) => <button key={v} aria-pressed={v === value} onClick={() => onChange(v)}>{text}</button>)}
     </div>
   );
@@ -143,7 +143,7 @@ export function App() {
         <Seg small value={settings.lang} options={[['fr', 'FR'], ['en', 'EN']]} onChange={(lang: Lang) => set({ lang })} />
         <button class="round" aria-label={L.settings} onClick={() => dialog.current?.showModal()}>⚙</button>
       </header>
-      <Seg value={tab} options={[['g', L.tabs.g], ['s', L.tabs.s], ['r', L.tabs.r], ['p', L.tabs.p]]} onChange={(t: Tab) => setTab(t)} />
+      <Seg navigation value={tab} options={[['g', L.tabs.g], ['s', L.tabs.s], ['r', L.tabs.r], ['p', L.tabs.p]]} onChange={(t: Tab) => setTab(t)} />
       {!persistent && <p class="warn">{L.noSave}</p>}
       {saveErr && <p class="warn">{L.saveFailed} <button class="linkish" onClick={doExport}>{L.exportB}</button></p>}
       {(tab === 'g' || tab === 's') && (

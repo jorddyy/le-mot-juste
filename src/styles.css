@@ -98,7 +98,7 @@ input[type=text]{font:600 1.4rem var(--serif);width:100%;padding:14px;border:2px
 .score{font:600 3rem/1 var(--serif);text-align:center;padding-top:8px}
 ul.miss{margin:6px 0 0;padding:0;list-style:none}
 ul.miss li{padding:7px 0;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 10px;align-items:baseline}
-ul.miss li span:first-child{font:600 1.1rem var(--serif)}
+ul.miss li > span:first-child{font:600 1.1rem var(--serif)}
 h2{font:600 1.1rem var(--serif);margin:6px 0 0;display:flex;align-items:center;gap:8px}
 h2 i{width:10px;height:10px;border-radius:50%;display:inline-block}
 table{border-collapse:collapse;width:100%}
@@ -116,8 +116,30 @@ input[type=number]{font:inherit;width:5em;padding:6px 8px;border:1px solid var(-
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 @media (max-width:400px){h1{font-size:1.3rem}.ver{display:none}}
 /* Progress stays descriptive: no daily targets or completion bars. */
-.seg{flex-wrap:wrap}
+.seg{flex-wrap:nowrap}
 .seg button{padding-inline:8px}
+.main-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
+.main-tabs button{min-width:0;padding:10px 4px;font-size:.9rem;min-height:44px}
+header .seg{flex:none}
+.round-summary{margin:0}
+@media (max-width:420px){
+  #app{padding:12px 12px 24px}
+  main{gap:10px}
+  header{gap:6px;padding:0}
+  header h1{font-size:clamp(1.05rem,5vw,1.3rem)}
+  header .ver{display:none}
+  header .round{width:40px;height:40px}
+  header .seg.small button{padding:4px 6px;min-height:34px;font-size:.78rem}
+  .main-tabs{gap:2px;padding:3px}
+  .main-tabs button{font-size:.85rem}
+  .card{padding:16px;gap:12px;border-radius:16px}
+  .controls{gap:6px}
+  .controls .chip{min-height:36px;padding:3px 10px}
+  .controls .seg.small button{min-height:36px}
+  .count{font-size:.72rem}
+  ul.miss li{padding:8px 0}
+  ul.miss .pill{white-space:normal;display:inline-block}
+}
 .skill-progress{border-top:1px solid var(--line);padding-top:16px}
 .skill-progress dl{display:grid;gap:6px;margin:12px 0}
 .skill-progress dl div{display:flex;justify-content:space-between;gap:12px}

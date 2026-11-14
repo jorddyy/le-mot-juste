@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.1 — 2026-11-14
+
+- Keep all four navigation tabs and the language selector on one line on phones.
+- Tighten mobile header/card spacing and fix oversized rule badges in round summaries.
+
 ## 0.2.0 — 2026-11-14
 
 - Add a Progress tab with separate gender/meaning review counts, a seven-day forecast, and a searchable word list with review dates.
