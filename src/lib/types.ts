@@ -26,6 +26,8 @@ export interface Settings {
 }
 /** Pending retries per skill: ids of words missed and not yet answered correctly. */
 export interface Retry { g: string[]; s: string[] }
+/** A card the user marked as wrong, confusing or not ideal, keyed by word id. */
+export interface Flag { t: number; note: string; skill: Skill }
 /**
  * One answer, exactly as it happened. `first` = first answer to a card in a session (graded),
  * `retry` = a repeat inside the session (not graded), `guess` = the user took back a correct

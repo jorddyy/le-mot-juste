@@ -5,7 +5,7 @@ import { key, Rating, review, type Grade, type Item } from './lib/sched';
 import { progress } from './lib/progress';
 import { GAP, startRound } from './lib/session';
 import { checkAnswer, type Check } from './lib/text';
-import type { G, LogEvent, Rec, Retry, Rule, Settings, Skill, Word } from './lib/types';
+import type { Flag, G, LogEvent, Rec, Retry, Rule, Settings, Skill, Word } from './lib/types';
 
 /** What the trainers need from the app shell. `cards` is the live, mutable progress map. */
 export interface Ctx {
@@ -17,6 +17,9 @@ export interface Ctx {
   log: (ev: LogEvent) => void;
   /** A missed word is owed a correct answer until `owe(..., false)` clears it. */
   owe: (skill: Skill, id: string, owed: boolean) => void;
+  flags: Record<string, Flag>;
+  /** Mark a card as wrong/confusing with an optional note; null removes the mark. */
+  flag: (id: string, f: Flag | null) => void;
 }
 
 interface Ans { ok: boolean; g?: G; base?: Rec; guessed?: boolean; raw?: string; check?: Check }
@@ -61,6 +64,9 @@ export function Trainer({ skill, pool, ctx, saved, onState, reviewOnly = false }
   const item = st.q[st.i], w = item?.w;
 
   useEffect(() => { onState?.(st); }, [st]);
+  const [flagOpen, setFlagOpen] = useState(false);
+  const flagNote = useRef<HTMLInputElement>(null);
+  useEffect(() => setFlagOpen(false), [st.i]);
   useEffect(() => {         // a change of article mode applies to the card on screen, unless already answered
     setSt(s => (s.done || s.ans ? s : { ...s, pair: pairFor(s.q[s.i].w) }));
   }, [settings.art]);
@@ -127,6 +133,7 @@ export function Trainer({ skill, pool, ctx, saved, onState, reviewOnly = false }
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey || document.querySelector('dialog[open]')) return;
+      if ((e.target as HTMLElement)?.closest?.('.flagRow')) return;     // typing a flag note
       const typing = (e.target as HTMLElement)?.tagName === 'INPUT';
       if (st.done) return;
       if (e.key === 'Enter') {
@@ -173,11 +180,23 @@ export function Trainer({ skill, pool, ctx, saved, onState, reviewOnly = false }
   // ---------- one card ----------
   const a = st.ans, p = st.pair, note = ctx.lang === 'en' ? w.noteEn ?? w.note : w.note;
   const answered = !!a || (item.recog && st.revealed);
+  const flagged = ctx.flags[w.id];
   const head = (
     <div class="meta">
       <span>{w.lv}</span>
       {w.tags.filter(t => t !== 'faux-ami').map(t => <span class="tag" key={t}>{t === 'ch' ? L.sw : t}</span>)}
       {item.isNew && <span class="tag new">{L.newWord}</span>}
+      <span class="spacer" />
+      <button class={`flagBtn ${flagged ? 'on' : ''}`} aria-label={L.flag} title={L.flag} aria-expanded={flagOpen} onClick={() => setFlagOpen(!flagOpen)}>⚑</button>
+    </div>
+  );
+  const saveFlag = () => { ctx.flag(w.id, { t: Date.now(), note: flagNote.current?.value.trim() ?? '', skill }); setFlagOpen(false); };
+  const flagRow = flagOpen && (
+    <div class="flagRow">
+      <input type="text" class="plain" ref={flagNote} key={w.id} defaultValue={flagged?.note ?? ''} placeholder={L.flagPh} maxLength={500} autoFocus
+        onKeyDown={e => { if (e.key === 'Enter') saveFlag(); else if (e.key === 'Escape') setFlagOpen(false); }} />
+      <button class="ghost" onClick={saveFlag}>{L.flagSave}</button>
+      {flagged && <button class="ghost" onClick={() => { ctx.flag(w.id, null); setFlagOpen(false); }}>{L.flagDel}</button>}
     </div>
   );
   const meaning = (
@@ -210,7 +229,7 @@ export function Trainer({ skill, pool, ctx, saved, onState, reviewOnly = false }
   let body: preact.ComponentChildren;
   if (skill === 'g') {
     body = <>
-      {head}{meaning}
+      {head}{flagRow}{meaning}
       <div class="noun"><span class={`slot ${a ? w.g : ''}`}>{a ? p[w.g] : ' '}</span><Noun w={w} mark={!!a} /></div>
       <div class="choices">
         {(['m', 'f'] as G[]).map(g => (
@@ -224,7 +243,7 @@ export function Trainer({ skill, pool, ctx, saved, onState, reviewOnly = false }
     </>;
   } else if (item.recog) {
     body = <>
-      {head}
+      {head}{flagRow}
       <div class="noun"><Chunk w={w} mark={st.revealed} /></div>
       {!st.revealed
         ? <><p class="center muted tight">{L.recall}</p>
@@ -242,7 +261,7 @@ export function Trainer({ skill, pool, ctx, saved, onState, reviewOnly = false }
   } else {
     const c = a?.check;
     body = <>
-      {head}{meaning}
+      {head}{flagRow}{meaning}
       {!a ? <>
         <input type="text" ref={input} key={st.i} placeholder={L.ph} aria-label={L.inpLabel} autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck={false} />
         <button class="primary" onClick={submit}>{L.check} <kbd>↵</kbd></button>

@@ -153,3 +153,10 @@ button:disabled{opacity:.55;cursor:default}
 .track-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:10px;font-size:.85rem;overflow-wrap:anywhere}
 .track-grid p{margin:4px 0;color:var(--muted)}
 .track-grid summary{cursor:pointer}
+.meta .spacer{flex:1}
+.flagBtn{border:0;background:none;padding:0 4px;font-size:.95rem;line-height:1;color:var(--muted);opacity:.45}
+.flagBtn:hover,.flagBtn[aria-expanded=true]{opacity:1}
+.flagBtn.on{opacity:1;color:var(--bad)}
+.flagRow{display:flex;gap:8px;align-items:center;margin-top:-6px}
+.flagRow input.plain{flex:1;min-width:0;font:inherit;font-size:.9rem;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);text-align:left}
+.flagRow .ghost{padding:7px 10px;font-size:.82rem}

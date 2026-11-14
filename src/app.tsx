@@ -3,7 +3,7 @@ import { Progress } from './progress';
 import { PAIRS } from './lib/articles';
 import { T } from './lib/i18n';
 import { addRetry, dropRetry } from './lib/session';
-import { exportAll, importAll, load, logEvent, onWriteError, resetAll, saveCards, saveRetry, saveSettings } from './lib/store';
+import { exportAll, importAll, load, logEvent, onWriteError, resetAll, saveCards, saveFlags, saveRetry, saveSettings } from './lib/store';
 import { DEFAULTS, LEVELS, type ArtMode, type G, type Lang, type Level, type Rec, type Retry, type Rule, type Settings, type Skill, type Word } from './lib/types';
 import { isDark } from './lib/validate';
 import { Chunk, Trainer, type Ctx, type St } from './trainer';
@@ -71,6 +71,8 @@ export function App() {
   const [tab, setTab] = useState<Tab>('g');
   const [, bump] = useState(0);
   const [saveErr, setSaveErr] = useState(false);
+  const [flags, setFlags] = useState<Record<string, import('./lib/types').Flag>>({});
+  const copyFlags = () => navigator.clipboard?.writeText(Object.entries(flags).map(([id, f]) => `${id} (${f.skill === 'g' ? 'article' : 'mot'}): ${f.note || '—'}`).join('\n')).then(() => alert(L.copied), () => {});
   const cards = useRef<Record<string, Rec>>({});
   const retry = useRef<Retry>({ g: [], s: [] });
   /** The round in progress in each trainer, kept while the user looks at another tab. */
@@ -79,7 +81,7 @@ export function App() {
 
   useEffect(() => {
     Promise.all([fetchData(), load()]).then(([d, saved]) => {
-      cards.current = saved.cards; retry.current = saved.retry;
+      cards.current = saved.cards; retry.current = saved.retry; setFlags(saved.flags);
       setSettings(saved.settings); setPersistent(saved.persistent); setData(d);
     }).catch(() => setErr(true));
     onWriteError(() => setSaveErr(true));
@@ -99,6 +101,8 @@ export function App() {
   if (!data) return <main><p class="center muted">{L.loading}</p></main>;
 
   const ctx: Ctx = {
+    flags,
+    flag: (id, f) => { const next = { ...flags }; if (f) next[id] = f; else delete next[id]; setFlags(next); saveFlags(next); },
     L, lang: settings.lang, settings, cards: cards.current, rules, byId, retry: retry.current,
     save: (k, rec) => { cards.current[k] = rec; saveCards(cards.current); },
     log: logEvent,
@@ -120,7 +124,7 @@ export function App() {
   };
   const started = (sk: string) => Object.keys(cards.current).filter(k => k.endsWith(`:${sk}`)).length;
   const doExport = async () => {
-    const mem = { settings, cards: cards.current, retry: retry.current };
+    const mem = { settings, cards: cards.current, retry: retry.current, flags };
     const blob = new Blob([JSON.stringify(await exportAll(mem, data.version))], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob); a.download = `le-mot-juste-${new Date().toISOString().slice(0, 10)}.json`; a.click();
@@ -164,6 +168,7 @@ export function App() {
         <p class="note">{L.seen(started('g'), started('s'), data.words.length)}</p>
         <div class="row wrap">
           <button class="ghost" onClick={doExport}>{L.exportB}</button>
+          {Object.keys(flags).length > 0 && <button class="ghost" onClick={copyFlags}>{L.flagsCopy(Object.keys(flags).length)}</button>}
           <button class="ghost" onClick={() => file.current?.click()}>{L.importB}</button>
           <button class="ghost danger" onClick={doReset}>{L.reset}</button>
           <input type="file" accept="application/json,.json" hidden ref={file} onChange={e => doImport((e.target as HTMLInputElement).files?.[0])} />

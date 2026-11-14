@@ -1,4 +1,4 @@
-import { key, plan, type Item } from './sched';
+import { dayStart, key, plan, type Item } from './sched';
 import type { Rec, Skill, Word } from './types';
 
 export const ROUND = 15;      // cards per round
@@ -15,7 +15,10 @@ export function startRound(
 ): { q: Item[]; left: number; total: number } {
   const owed = retry.map(id => byId.get(id)).filter((w): w is Word => !!w);
   const owedIds = new Set(owed.map(w => w.id));
-  const planned = plan(skill, pool, cards, batchSize, now, extra).queue.filter(it => !owedIds.has(it.w.id));
+  // A noun's two cards never meet on the same day: seeing "une plage" in one trainer gives the other away.
+  const start = dayStart(now), other: Skill = skill === 'g' ? 's' : 'g';
+  const fresh = (w: Word) => { const last = cards[key(w, other)]?.c.last_review; return !last || new Date(last).getTime() < start; };
+  const planned = plan(skill, pool.filter(fresh), cards, batchSize, now, extra).queue.filter(it => !owedIds.has(it.w.id));
   const q = planned.slice(0, ROUND);
   const total = q.length;
   q.splice(Math.min(GAP, q.length), 0, ...owed.map(w => ({ w, isNew: false, rep: true })));

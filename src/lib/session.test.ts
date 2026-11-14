@@ -35,6 +35,13 @@ describe('retries', () => {
     expect(startRound('g', pool, byId, {}, ['gone#n'], 3, now).q).toHaveLength(3);
     expect(addRetry(addRetry([], 'a#n'), 'a#n')).toEqual(['a#n']);
   });
+  it("keeps a noun's two cards apart on the same day", () => {
+    const cards = { [key(pool[0], 'g')]: review(undefined, Rating.Good, now), [key(pool[1], 'g')]: review(undefined, Rating.Good, new Date(2026, 10, 12)) };
+    const later = new Date(2026, 10, 14, 18);
+    expect(startRound('s', pool.slice(0, 3), byId, cards, [], 10, later).q.map(i => i.w.l).sort()).toEqual(['b', 'c']);     // a: gender seen today
+    expect(startRound('s', pool.slice(0, 3), byId, cards, ['a#n'], 10, later).q.map(i => i.w.l)).toContain('a');           // an owed word still returns
+    expect(startRound('s', pool.slice(0, 3), byId, cards, [], 10, new Date(2026, 10, 15, 9)).q).toHaveLength(3);           // next day: back
+  });
   it('shows a meaning card as recognition until it has two reviews', () => {
     const once = review(undefined, Rating.Good, new Date(2026, 9, 1));
     const cards = { [key(pool[0], 's')]: review(once, Rating.Good, new Date(2026, 9, 5)), [key(pool[1], 's')]: once };

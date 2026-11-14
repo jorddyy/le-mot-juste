@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.2 — 2026-11-14
+
+- Flag a card with the small ⚑ at its top right, with an optional note on what is wrong or confusing.
+  Flags are saved, included in the export, and can be copied from Settings.
+- A noun's article card and meaning card no longer appear on the same day.
+
 ## 0.2.1 — 2026-11-14
 
 - Keep all four navigation tabs and the language selector on one line on phones.
