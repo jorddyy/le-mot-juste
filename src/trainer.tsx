@@ -22,7 +22,7 @@ export interface Ctx {
   flag: (id: string, f: Flag | null) => void;
 }
 
-interface Ans { ok: boolean; g?: G; base?: Rec; guessed?: boolean; raw?: string; check?: Check }
+interface Ans { ok: boolean; g?: G; base?: Rec; raw?: string; check?: Check }
 export interface St {
   q: Item[]; i: number; ans: Ans | null; done: boolean; first: number; total: number;
   miss: Word[]; left: number; showEn: boolean; revealed: boolean; pair: Pair;
@@ -105,14 +105,6 @@ export function Trainer({ skill, pool, ctx, saved, onState, reviewOnly = false }
     log('g', kind(), ok, grade('g', ok ? (easy ? Rating.Easy : Rating.Good) : Rating.Again, base), g);
     settle(ok);
     setSt({ ...st, ans: { ok, g, base }, ...tally(st, ok) });
-  }
-  function guessed() {
-    const a = st.ans;
-    if (!a?.ok || a.guessed) return;
-    // A lucky guess is not knowledge: take back the credit (re-grade from the card as it was before).
-    log('g', 'guess', false, grade('g', Rating.Again, a.base));
-    ctx.owe('g', w.id, true);
-    setSt({ ...st, ans: { ...a, guessed: true }, q: requeue(st), first: st.first - (item.rep ? 0 : 1), miss: missed(st) });
   }
   function gradeRecog(knew: boolean) {
     log('s', kind(), knew, grade('s', knew ? Rating.Good : Rating.Again, cards[key(w, 's')]), knew ? 'knew' : 'not yet');
@@ -220,7 +212,6 @@ export function Trainer({ skill, pool, ctx, saved, onState, reviewOnly = false }
       </div>
       <div class="note center">{ctx.retry[skill].includes(w.id) ? L.retrySoon : cards[key(w, skill)] ? `${L.nextReview}: ${new Date(cards[key(w, skill)].c.due).toLocaleString(ctx.lang, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}` : ''}</div>
       <div class="row">
-        {skill === 'g' && a.ok && !a.guessed && <button class="ghost" onClick={guessed}>{L.guessed}</button>}
         <button class="primary" ref={nextBtn} onClick={next}>{L.next} <kbd>↵</kbd></button>
       </div>
     </>

@@ -11,7 +11,8 @@ Two trainers over one word list. Every noun has two independent memory tracks:
 - Article pair: un/une, le/la, or mixed (also ce/cette, mon/ma). Never a form that hides the gender.
 - Feedback: verdict, a badge (follows the -X pattern / exception / no pattern), the rule sentence
   with its measured reliability, an example sentence. Gender colour appears only after answering.
-- "J'ai deviné" turns a correct answer into a miss: a 50/50 guess is weak evidence.
+- No "I guessed" button (removed in 0.4.1): answering by feel is how gender is meant to work, and a
+  lucky guess is corrected by the next review anyway. Old logs may still contain `guess` events.
 - A new noun that obeys an ending rule with reliability >= 90% is rated Easy on first success,
   so review time goes to exceptions and rule-less nouns.
 

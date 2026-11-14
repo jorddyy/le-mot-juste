@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.1 — 2026-11-14
+
+- Removed the "J'ai deviné" button: answering by feel is the point, and a lucky guess gets caught at the next review.
+
 ## 0.4.0 — 2026-11-14
 
 - Optional sync between devices through a server of your own (Settings → Sync): merges at start-up,

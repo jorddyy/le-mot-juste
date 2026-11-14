@@ -6,7 +6,7 @@ const often = { fr: (p: number) => (p >= 99 ? 'pratiquement toujours' : `dans ${
 export const T = {
   fr: {
     tabs: { g: 'Articles', s: 'Mots', r: 'Règles', p: 'Progrès' }, mix: 'mélange', g: { m: 'masculin', f: 'féminin' } as Record<G, string>,
-    ok: 'Juste', bad: 'Pas tout à fait', bad2: 'À revoir', guessed: "J'ai deviné", willReturn: "D'accord : ce mot reviendra dans cette série.",
+    ok: 'Juste', bad: 'Pas tout à fait', bad2: 'À revoir',
     showEn: 'Voir la traduction', hideEn: 'Cacher la traduction', next: 'Suivant', check: 'Vérifier',
     rule: (e: string, g: G, p: number) => `Les noms en <b>-${e}</b> sont <span class="g-${g}">${T.fr.g[g]}s</span> ${often.fr(p)}.`,
     exc: (e: string, g: G, p: number, c: string) => `<b>Exception !</b> Les noms en <b>-${e}</b> sont ${T.fr.g[g]}s ${often.fr(p)}, mais on dit <b>${c}</b>.`,
@@ -39,7 +39,7 @@ export const T = {
   },
   en: {
     tabs: { g: 'Articles', s: 'Words', r: 'Rules', p: 'Progress' }, mix: 'mixed', g: { m: 'masculine', f: 'feminine' } as Record<G, string>,
-    ok: 'Correct', bad: 'Not quite', bad2: 'Review this one', guessed: 'I guessed', willReturn: 'OK: this word will come back in this round.',
+    ok: 'Correct', bad: 'Not quite', bad2: 'Review this one',
     showEn: 'Show translation', hideEn: 'Hide translation', next: 'Next', check: 'Check',
     rule: (e: string, g: G, p: number) => `Nouns ending in <b>-${e}</b> are <span class="g-${g}">${T.en.g[g]}</span> ${often.en(p)}.`,
     exc: (e: string, g: G, p: number, c: string) => `<b>Exception!</b> Nouns ending in <b>-${e}</b> are ${T.en.g[g]} ${often.en(p)}, but it is <b>${c}</b>.`,
