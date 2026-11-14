@@ -1,0 +1,30 @@
+import type { Card } from 'ts-fsrs';
+
+export type G = 'm' | 'f';
+export type Level = 'A1' | 'A2' | 'B1' | 'B2';
+/** One memory track per noun and skill: g = gender, s = sens (meaning). */
+export type Skill = 'g' | 's';
+export type Lang = 'fr' | 'en';
+export type ArtMode = 'un' | 'le' | 'mix';
+
+export interface Word {
+  id: string; l: string; g: G; lv: Level;
+  /** Ending guideline this noun falls under ('' if none); see rules.json. */
+  end: string;
+  /** True when the noun takes l' (vowel or silent h), which hides its gender. */
+  el: boolean;
+  def: string; en: string; ex: string; exEn: string; tags: string[];
+  note?: string; noteEn?: string;
+}
+export interface Rule { end: string; g: G; pct: number; n: number; examples: string[]; exceptions: string[] }
+/** Saved state of one card: the FSRS card plus when it was first seen. */
+export interface Rec { c: Card; first: number }
+export interface Settings {
+  lang: Lang; theme: '' | 'light' | 'dark'; levels: Level[]; art: ArtMode;
+  /** New cards per day for the article trainer and for the word trainer. */
+  newG: number; newS: number;
+}
+export interface LogEvent { t: number; k: string; r: number }
+
+export const LEVELS: Level[] = ['A1', 'A2', 'B1', 'B2'];
+export const DEFAULTS: Settings = { lang: 'fr', theme: '', levels: ['A1', 'A2', 'B1'], art: 'mix', newG: 20, newS: 10 };

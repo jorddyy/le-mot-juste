@@ -1,0 +1,61 @@
+import type { G, Lang } from './types';
+
+const often = { fr: (p: number) => (p >= 99 ? 'pratiquement toujours' : `dans ${p} % des cas`), en: (p: number) => (p >= 99 ? 'almost always' : `${p}% of the time`) };
+
+/** Interface and feedback strings. The rule sentences return HTML (bold ending, coloured gender). */
+export const T = {
+  fr: {
+    tabs: { g: 'Articles', s: 'Mots', r: 'Règles' }, mix: 'mélange', g: { m: 'masculin', f: 'féminin' } as Record<G, string>,
+    ok: 'Juste', bad: 'Pas tout à fait', bad2: 'À revoir', guessed: "J'ai deviné", willReturn: "D'accord : ce mot reviendra dans cette série.",
+    showEn: 'Voir la traduction', hideEn: 'Cacher la traduction', next: 'Suivant', check: 'Vérifier',
+    rule: (e: string, g: G, p: number) => `Les noms en <b>-${e}</b> sont <span class="g-${g}">${T.fr.g[g]}s</span> ${often.fr(p)}.`,
+    exc: (e: string, g: G, p: number, c: string) => `<b>Exception !</b> Les noms en <b>-${e}</b> sont ${T.fr.g[g]}s ${often.fr(p)}, mais on dit <b>${c}</b>.`,
+    noRule: (c: string) => `Pas de terminaison fiable ici : à retenir avec son article, <b>${c}</b>.`,
+    pRule: (e: string) => `suit la règle -${e}`, pExc: (e: string) => `exception à la règle -${e}`, pNone: 'pas de règle',
+    vowel: "Devant une voyelle ou un h muet, l' cache le genre : ici on choisit un / une.",
+    first: 'justes du premier coup', review: 'À revoir', perfect: 'Sans faute !',
+    more: (n: number) => `Continuer · encore ${n}`, doneToday: "C'est tout pour aujourd'hui.", extra: '10 nouveaux mots de plus',
+    nothing: 'Rien à réviser pour le moment.', comeBack: 'Les prochains mots reviendront quand ils seront sur le point d’être oubliés.',
+    newWord: 'nouveau', later: (n: number) => `puis ${n} autres`,
+    your: 'Ta réponse', word: 'Mot', article: 'Article', artWrong: 'compte pour le genre, pas pour le sens',
+    noArt: "pas d'article : essaie avec un / une", elide: "l' cache le genre : essaie avec un / une", accents: 'Attention aux accents :',
+    ph: 'un… / une…', inpLabel: 'Le mot en français, avec son article',
+    recall: 'Que veut dire ce mot ?', reveal: 'Voir la définition', knew: 'Je savais', notYet: 'Pas encore',
+    rulesIntro: "La terminaison d'un nom donne souvent son genre. Devine d'abord avec la règle, puis retiens les exceptions.",
+    rulesFoot: (n: string) => `Pourcentages mesurés sur les noms courants de ${n}.`, fem: 'Plutôt féminin', masc: 'Plutôt masculin', but: 'mais',
+    settings: 'Réglages', newG: 'Nouveaux mots par jour · Articles', newS: 'Nouveaux mots par jour · Mots',
+    exportB: 'Exporter ma progression', importB: 'Importer', reset: 'Tout effacer', resetAsk: 'Effacer toute ta progression ? Cette action est définitive.',
+    imported: 'Progression importée.', badFile: "Ce fichier n'est pas une sauvegarde valide.", close: 'Fermer',
+    seen: (g: number, s: number, n: number) => `Mots commencés : genre ${g} / ${n} · sens ${s} / ${n}`,
+    noSave: 'Ce navigateur ne peut pas enregistrer ta progression (fenêtre privée ?).', loading: 'Chargement…', loadErr: 'Impossible de charger les mots.',
+    version: 'Version', data: 'liste de mots', theme: 'Thème clair / sombre', sw: 'Suisse', levels: 'Niveaux',
+  },
+  en: {
+    tabs: { g: 'Articles', s: 'Words', r: 'Rules' }, mix: 'mixed', g: { m: 'masculine', f: 'feminine' } as Record<G, string>,
+    ok: 'Correct', bad: 'Not quite', bad2: 'Review this one', guessed: 'I guessed', willReturn: 'OK: this word will come back in this round.',
+    showEn: 'Show translation', hideEn: 'Hide translation', next: 'Next', check: 'Check',
+    rule: (e: string, g: G, p: number) => `Nouns ending in <b>-${e}</b> are <span class="g-${g}">${T.en.g[g]}</span> ${often.en(p)}.`,
+    exc: (e: string, g: G, p: number, c: string) => `<b>Exception!</b> Nouns ending in <b>-${e}</b> are ${T.en.g[g]} ${often.en(p)}, but it is <b>${c}</b>.`,
+    noRule: (c: string) => `No reliable ending here: learn it together with its article, <b>${c}</b>.`,
+    pRule: (e: string) => `follows the -${e} pattern`, pExc: (e: string) => `exception to the -${e} pattern`, pNone: 'no pattern',
+    vowel: "Before a vowel or silent h, l' hides the gender, so here you choose un / une.",
+    first: 'right first time', review: 'To review', perfect: 'No mistakes!',
+    more: (n: number) => `Continue · ${n} more`, doneToday: "That's all for today.", extra: '10 more new words',
+    nothing: 'Nothing to review right now.', comeBack: 'Words come back when you are about to forget them.',
+    newWord: 'new', later: (n: number) => `then ${n} more`,
+    your: 'Your answer', word: 'Word', article: 'Article', artWrong: 'counts against gender, not meaning',
+    noArt: 'no article: try it with un / une', elide: "l' hides the gender: try it with un / une", accents: 'Mind the accents:',
+    ph: 'un… / une…', inpLabel: 'The French word, with its article',
+    recall: 'What does this word mean?', reveal: 'Show the definition', knew: 'I knew it', notYet: 'Not yet',
+    rulesIntro: "A noun's ending often gives away its gender. Guess with the rule first, then learn the exceptions.",
+    rulesFoot: (n: string) => `Percentages measured on the common nouns of ${n}.`, fem: 'Mostly feminine', masc: 'Mostly masculine', but: 'but',
+    settings: 'Settings', newG: 'New words per day · Articles', newS: 'New words per day · Words',
+    exportB: 'Export my progress', importB: 'Import', reset: 'Erase everything', resetAsk: 'Erase all your progress? This cannot be undone.',
+    imported: 'Progress imported.', badFile: 'This file is not a valid backup.', close: 'Close',
+    seen: (g: number, s: number, n: number) => `Words started: gender ${g} / ${n} · meaning ${s} / ${n}`,
+    noSave: 'This browser cannot save your progress (private window?).', loading: 'Loading…', loadErr: 'Could not load the words.',
+    version: 'Version', data: 'word list', theme: 'Light / dark theme', sw: 'Switzerland', levels: 'Levels',
+  },
+} satisfies Record<Lang, unknown>;
+
+export type Strings = typeof T.fr;
