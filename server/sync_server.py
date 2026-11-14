@@ -10,17 +10,19 @@
 GET  /  -> 200 stored document | 404 nothing yet        PUT /  -> 204 stored
 Every request needs "Authorization: Bearer <token>". A token only ever reaches its own document.
 """
-import hashlib, hmac, json, os
+import hashlib, hmac, json, os, tempfile, threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 TOKENS = [t.strip() for t in os.environ.get("LMJ_TOKENS", "").split(",") if len(t.strip()) >= 24]
 DIR = os.environ.get("LMJ_DIR", "./sync-data")
 ORIGIN = os.environ.get("LMJ_ORIGIN", "*")
 MAX = 8 * 1024 * 1024
+WRITE = threading.Lock()          # one upload at a time touches the stored file
 
 
 class Handler(BaseHTTPRequestHandler):
     server_version = "lmj-sync"
+    timeout = 20                  # seconds: a silent or slow connection is dropped, it cannot hold a thread
 
     def reply(self, code, body=b"", ctype="application/json"):
         self.send_response(code)
@@ -63,11 +65,13 @@ class Handler(BaseHTTPRequestHandler):
             assert isinstance(doc, dict) and doc.get("app") == "le-mot-juste" and isinstance(doc.get("cards"), dict)
         except Exception:
             return self.reply(400)
-        if os.path.exists(path):
-            os.replace(path, path + ".bak")          # keep the previous version
-        with open(path + ".tmp", "wb") as fh:
-            fh.write(body)
-        os.replace(path + ".tmp", path)
+        with WRITE:
+            fd, tmp = tempfile.mkstemp(dir=DIR, suffix=".tmp")      # own temp file per upload
+            with os.fdopen(fd, "wb") as fh:
+                fh.write(body)
+            if os.path.exists(path):
+                os.replace(path, path + ".bak")      # keep the previous version
+            os.replace(tmp, path)
         self.reply(204)
 
     def log_message(self, fmt, *args):               # no tokens or bodies in logs

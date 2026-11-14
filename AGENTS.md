@@ -21,7 +21,8 @@ Public repo. Read `docs/DESIGN.md` for the why, `docs/TODO.md` for what is next.
 | `data/src/*.json` | Hand-curated nouns (one entry per line). The source of truth for words |
 | `scripts/build_data.py` | Validates, dedupes, cross-checks gender against Lexique, measures ending rules, writes `public/data/words.json` + `rules.json` + `build/report.md` |
 | `raw/` (gitignored) | `Lexique383.tsv`, downloaded from lexique.org. Never commit |
-| `src/lib/` | Pure logic: `sched.ts` (FSRS + daily plan), `session.ts` (rounds and owed retries), `text.ts` (typed-answer check), `articles.ts` (which article pair), `validate.ts` (backup/settings validation, schema), `store.ts` (IndexedDB), `i18n.ts` (FR/EN strings), `types.ts` |
+| `src/lib/` | Pure logic: `sched.ts` (FSRS + daily plan), `session.ts` (rounds and owed retries), `text.ts` (typed-answer check), `articles.ts` (which article pair), `validate.ts` (backup/settings validation, schema), `sync.ts` (optional sync: merge + protocol), `update.ts` (service-worker update prompt), `store.ts` (IndexedDB), `i18n.ts` (FR/EN strings), `types.ts` |
+| `server/` | Reference sync endpoint (`sync_server.py`) and setup notes |
 | `src/trainer.tsx` | One round of cards for a skill (`g` = gender, `s` = meaning) |
 | `src/app.tsx` | Shell: tabs, levels, settings dialog, rules page |
 | `.github/workflows/pages.yml` | Tests, builds and deploys `main` to GitHub Pages (https://jorddyy.github.io/le-mot-juste/) |

@@ -172,7 +172,7 @@ export function Trainer({ skill, pool, ctx, saved, onState, reviewOnly = false }
   // ---------- one card ----------
   const a = st.ans, p = st.pair, note = ctx.lang === 'en' ? w.noteEn ?? w.note : w.note;
   const answered = !!a || (item.recog && st.revealed);
-  const flagged = ctx.flags[w.id];
+  const flagged = ctx.flags[w.id]?.del ? undefined : ctx.flags[w.id];
   const head = (
     <div class="meta">
       <span>{w.lv}</span>

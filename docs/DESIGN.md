@@ -54,6 +54,9 @@ examples and CEFR levels are model-written and only spot-checked.
 - Vite + TypeScript + Preact; progress in IndexedDB (`idb-keyval`); export/import as a JSON file.
 - English translations, French definitions first. UI and feedback switchable FR/EN.
 - Swiss and France French both: Swiss words carry the `ch` tag and a note with the French word.
+- Sync merges per card (latest review wins) and only ever adds to what a device has; a removed flag
+  travels as a `del` marker; a reset or restored backup starts a new `epoch` that replaces the other
+  side outright. Known limit: two tabs of the app open on one device overwrite each other.
 - Audio removed (browser voices are poor); pre-generated audio is a later option.
 
 ## Progress

@@ -91,7 +91,7 @@ describe('load and export', () => {
   it('exports what is in memory in a form that imports again', async () => {
     await importAll(valid());
     const saved = await load();
-    const out = file(await exportAll({ settings: saved.settings, cards: saved.cards, retry: saved.retry, flags: saved.flags }, 'abc'));
+    const out = file(await exportAll({ settings: saved.settings, cards: saved.cards, retry: saved.retry, flags: saved.flags, epoch: saved.epoch }, 'abc'));
     const back = parseBackup(out);
     expect(Object.keys(back.cards)).toEqual(['plage#n:g', 'plage#n:s']);
     expect(back.log).toHaveLength(2);

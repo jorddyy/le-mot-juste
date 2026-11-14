@@ -51,12 +51,14 @@ function parseRec(r: unknown): Rec | null {
   return { c: card, first: r.first };
 }
 
-export interface Backup { cards: Record<string, Rec>; log: LogEvent[]; retry: Retry; settings: Settings | null; flags: Record<string, Flag> }
+export interface Backup { cards: Record<string, Rec>; log: LogEvent[]; retry: Retry; settings: Settings | null; flags: Record<string, Flag>;
+  /** When this progress was last started afresh (reset or restore). On sync, the newer epoch replaces the older outright. */
+  epoch: number }
 
 export function sanitizeFlags(x: unknown): Record<string, Flag> {
   const out: Record<string, Flag> = {};
   if (isObj(x)) for (const [id, f] of Object.entries(x)) {
-    if (isObj(f) && num(f.t, 0)) out[id] = { t: f.t, note: typeof f.note === 'string' ? f.note.slice(0, 500) : '', skill: f.skill === 's' ? 's' : 'g' };
+    if (isObj(f) && num(f.t, 0)) out[id] = { t: f.t, note: typeof f.note === 'string' ? f.note.slice(0, 500) : '', skill: f.skill === 's' ? 's' : 'g', ...(f.del === true && { del: true }) };
   }
   return out;
 }
@@ -80,5 +82,5 @@ export function parseBackup(data: unknown): Backup {
   const log = ((data.log ?? []) as unknown[]).map((e, i) => normEvent(e) ?? bad(`log entry ${i}`));
   if (data.settings != null && !isObj(data.settings)) return bad('settings');
   if (data.retry != null && !isObj(data.retry)) return bad('retry');
-  return { cards, log, flags: sanitizeFlags(data.flags), retry: sanitizeRetry(data.retry), settings: data.settings == null ? null : sanitizeSettings(data.settings) };
+  return { cards, log, epoch: num(data.epoch, 0) ? data.epoch : 0, flags: sanitizeFlags(data.flags), retry: sanitizeRetry(data.retry), settings: data.settings == null ? null : sanitizeSettings(data.settings) };
 }

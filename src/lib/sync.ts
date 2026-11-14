@@ -13,11 +13,14 @@ type Data = Omit<Backup, 'settings'>;
 const time = (d: unknown) => (d ? new Date(d as string).getTime() : 0);
 const sig = (b: Data) => JSON.stringify([
   Object.entries(b.cards).map(([k, r]) => [k, time(r.c.last_review), r.c.reps]).sort(),
-  b.log.length, Object.entries(b.flags).sort(), b.retry,
+  b.log.length, Object.entries(b.flags).sort(), b.retry, b.epoch,
 ]);
+export const reviewedAt = (r: { c: { last_review?: unknown } }) => time(r.c.last_review);
 
 /** Combine two devices' progress: per card the most recently reviewed copy wins; logs and flags are united. */
 export function merge(a: Data, b: Data): Data {
+  // A reset or a restored backup starts a new epoch: it replaces the other side instead of merging with it.
+  if (a.epoch !== b.epoch) return a.epoch > b.epoch ? a : b;
   const cards = { ...b.cards };
   for (const [k, r] of Object.entries(a.cards)) if (!cards[k] || time(r.c.last_review) >= time(cards[k].c.last_review)) cards[k] = r;
   const seen = new Map<string, LogEvent>();
@@ -27,7 +30,7 @@ export function merge(a: Data, b: Data): Data {
   for (const [id, f] of Object.entries(a.flags)) if (!flags[id] || f.t >= flags[id].t) flags[id] = f;
   // Owed retries follow whichever device was used last.
   const last = (d: Data) => d.log.reduce((m, e) => Math.max(m, e.t), 0);
-  return { cards, log, flags, retry: last(a) >= last(b) ? a.retry : b.retry };
+  return { epoch: a.epoch, cards, log, flags, retry: last(a) >= last(b) ? a.retry : b.retry };
 }
 
 /**
@@ -39,7 +42,7 @@ export async function syncOnce(conf: SyncConf, local: unknown, fetchFn: typeof f
   const mine = parseBackup(JSON.parse(JSON.stringify(local)));
   const headers = { Authorization: `Bearer ${conf.token}` };
   const res = await fetchFn(conf.url, { headers, cache: 'no-store', signal: AbortSignal.timeout(8000) });
-  if (res.status !== 404 && !res.ok) throw new Error(`sync GET ${res.status}`);
+  if (res.status !== 404 && !res.ok) throw new Error(`${res.status}`);
   const theirs = res.status === 404 ? null : parseBackup(await res.json());
   const out = theirs ? merge(mine, theirs) : mine;
   if (!theirs || sig(out) !== sig(theirs)) {
@@ -47,7 +50,7 @@ export async function syncOnce(conf: SyncConf, local: unknown, fetchFn: typeof f
       method: 'PUT', headers: { ...headers, 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(8000),
       body: JSON.stringify({ app: 'le-mot-juste', schema: SCHEMA, exported: new Date().toISOString(), ...out }),
     });
-    if (!put.ok) throw new Error(`sync PUT ${put.status}`);
+    if (!put.ok) throw new Error(`${put.status}`);
   }
   return sig(out) !== sig(mine) ? out : null;
 }

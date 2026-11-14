@@ -4,10 +4,12 @@
 - [x] Deploy: GitHub Pages via `.github/workflows/pages.yml` (2026-11-14).
 - [x] Offline support: `vite-plugin-pwa`, prompt-style updates via `src/lib/update.ts` (2026-11-14). Test on a real phone.
 - [ ] Review the model-written definitions/examples; fix anything odd found while using the app.
-- [ ] Sibling burying: don't show a noun's gender and meaning cards in the same session.
+- [x] Sibling burying: a noun's two cards never appear on the same day (0.2.2).
 - [ ] Second senses for more two-gender nouns (la tour, la livre, le mode...), like `poste#n2`.
 
 ## Later
+- [ ] Two tabs on one device overwrite each other's progress (use a BroadcastChannel or re-read before saving).
+- [ ] Back up `/root/lmj-sync/data` on the user's server.
 - [ ] Word list pipeline: FLELex levels + Lexique + Wiktionary + Tatoeba, as separate files per licence.
       Confirm the Lexique licence (README says CC BY-SA 4.0, Lexique 4 page says CC BY-NC 4.0).
 - [ ] Other word types in the word trainer (verbs, adjectives, adverbs).

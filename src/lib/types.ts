@@ -27,11 +27,11 @@ export interface Settings {
 /** Pending retries per skill: ids of words missed and not yet answered correctly. */
 export interface Retry { g: string[]; s: string[] }
 /** A card the user marked as wrong, confusing or not ideal, keyed by word id. */
-export interface Flag { t: number; note: string; skill: Skill }
+export interface Flag { t: number; note: string; skill: Skill; /** Removed again: kept as a marker so the removal reaches other devices. */ del?: boolean }
 /**
  * One answer, exactly as it happened. `first` = first answer to a card in a session (graded),
- * `retry` = a repeat inside the session (not graded), `guess` = the user took back a correct
- * answer with "I guessed" (re-grades the preceding `first`), `article` = a wrong article in a
+ * `retry` = a repeat inside the session (not graded), `guess` = legacy (the "I guessed" button, removed in 0.4.1:
+ * it re-graded the preceding `first`), `article` = a wrong article in a
  * typed answer, charged to the gender card. `r` is the FSRS grade applied, absent when none was.
  */
 export interface LogEvent { t: number; k: string; kind: 'first' | 'retry' | 'guess' | 'article'; ok: boolean; r?: number; a?: string }

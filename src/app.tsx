@@ -3,9 +3,9 @@ import { Progress } from './progress';
 import { PAIRS } from './lib/articles';
 import { T } from './lib/i18n';
 import { addRetry, dropRetry } from './lib/session';
-import { exportAll, importAll, load, logEvent, loadSync, onWriteError, resetAll, saveCards, saveFlags, saveRetry, saveSettings, saveSync } from './lib/store';
+import { exportAll, importAll, load, logEvent, loadSync, mergeLog, onWriteError, resetAll, saveCards, saveFlags, saveRetry, saveSettings, saveSync } from './lib/store';
 import { DEFAULTS, LEVELS, type ArtMode, type G, type Lang, type Level, type Rec, type Retry, type Rule, type Settings, type Skill, type Word } from './lib/types';
-import { syncOnce, type SyncConf } from './lib/sync';
+import { reviewedAt, syncOnce, type SyncConf } from './lib/sync';
 import { applyUpdate, onUpdateReady } from './lib/update';
 import { isDark, SCHEMA } from './lib/validate';
 import { Chunk, Trainer, type Ctx, type St } from './trainer';
@@ -76,24 +76,46 @@ export function App() {
   const [update, setUpdate] = useState(false);
   const [sync, setSync] = useState<SyncConf>({ url: '', token: '' });
   const [syncMsg, setSyncMsg] = useState('');
-  const live = useRef<{ settings: Settings; flags: Record<string, import('./lib/types').Flag>; version: string; conf: SyncConf | null; busy: Promise<void> | null }>({ settings: DEFAULTS, flags: {}, version: '', conf: null, busy: null });
+  const live = useRef<{ settings: Settings; flags: Record<string, import('./lib/types').Flag>; version: string; epoch: number; conf: SyncConf | null; busy: Promise<void> | null }>({ settings: DEFAULTS, flags: {}, version: '', epoch: 0, conf: null, busy: null });
+  const L401 = useRef('');
   /** Merge with the user's own sync server, if one is configured. Never throws; reports in Settings. */
   const doSync = () => (live.current.busy ??= (async () => {
     const { conf, settings: st, flags: fl, version } = live.current;
     if (!conf) return;
     try {
-      const merged = await syncOnce(conf, await exportAll({ settings: st, cards: cards.current, retry: retry.current, flags: fl }, version));
-      if (merged) {                 // another device did something: take it over, in storage and in memory
+      const retryBefore = JSON.stringify(retry.current);
+      const merged = await syncOnce(conf, await exportAll({ settings: st, cards: cards.current, retry: retry.current, flags: fl, epoch: live.current.epoch }, version));
+      if (merged && merged.epoch > live.current.epoch) {
+        // The other device was reset or restored from a backup: take its state over completely.
         await importAll({ app: 'le-mot-juste', schema: SCHEMA, ...merged });
-        Object.assign(cards.current, merged.cards);
-        retry.current.g = merged.retry.g; retry.current.s = merged.retry.s;
-        setFlags(merged.flags);
+        location.reload();
+        return;
+      }
+      if (merged) {
+        // Add what the other device did, without awaiting in between and without overwriting:
+        // answers given while the request was under way are newer than the snapshot and must win.
+        let changed = false;
+        for (const [k, r] of Object.entries(merged.cards)) {
+          const cur = cards.current[k];
+          if (!cur || reviewedAt(r) > reviewedAt(cur)) { cards.current[k] = r; changed = true; }
+        }
+        if (changed) saveCards(cards.current);
+        if (JSON.stringify(retry.current) === retryBefore) { retry.current.g = merged.retry.g; retry.current.s = merged.retry.s; saveRetry(retry.current); }
+        setFlags(cur => {
+          const next = { ...cur };
+          for (const [id, f] of Object.entries(merged.flags)) if (!next[id] || f.t > next[id].t) next[id] = f;
+          saveFlags(next);
+          return next;
+        });
+        await mergeLog(merged.log);
+        bump(n => n + 1);
       }
       setSyncMsg(`✓ ${new Date().toLocaleTimeString().slice(0, 5)}`);
-    } catch { setSyncMsg('✗'); }
+    } catch (e) { setSyncMsg(`✗ ${/^\d+$/.test((e as Error).message) ? (e as Error).message + ((e as Error).message === '401' ? ' · ' + L401.current : '') : ''}`); }
   })().finally(() => { live.current.busy = null; }));
   const [flags, setFlags] = useState<Record<string, import('./lib/types').Flag>>({});
-  const copyFlags = () => navigator.clipboard?.writeText(Object.entries(flags).map(([id, f]) => `${id} (${f.skill === 'g' ? 'article' : 'mot'}): ${f.note || '—'}`).join('\n')).then(() => alert(L.copied), () => {});
+  const nFlags = Object.values(flags).filter(f => !f.del).length;
+  const copyFlags = () => navigator.clipboard?.writeText(Object.entries(flags).filter(([, f]) => !f.del).map(([id, f]) => `${id} (${f.skill === 'g' ? 'article' : 'mot'}): ${f.note || '—'}`).join('\n')).then(() => alert(L.copied), () => {});
   const cards = useRef<Record<string, Rec>>({});
   const retry = useRef<Retry>({ g: [], s: [] });
   /** The round in progress in each trainer, kept while the user looks at another tab. */
@@ -104,7 +126,7 @@ export function App() {
     Promise.all([fetchData(), load(), loadSync()]).then(async ([d, saved, conf]) => {
       cards.current = saved.cards; retry.current = saved.retry; setFlags(saved.flags);
       setSettings(saved.settings); setPersistent(saved.persistent);
-      live.current = { settings: saved.settings, flags: saved.flags, version: d.version, conf, busy: null };
+      live.current = { settings: saved.settings, flags: saved.flags, version: d.version, epoch: saved.epoch, conf, busy: null };
       if (conf) { setSync(conf); await Promise.race([doSync(), new Promise(r => setTimeout(r, 5000))]); }   // start from the newest progress
       setData(d);
     }).catch(() => setErr(true));
@@ -124,16 +146,18 @@ export function App() {
   const byId = useMemo(() => new Map((data?.words ?? []).map(w => [w.id, w])), [data]);
 
   if (err) return <main><p class="center">{L.loadErr}</p></main>;
-  live.current.settings = settings; live.current.flags = flags;
+  live.current.settings = settings; live.current.flags = flags; L401.current = T[settings.lang].badToken;
   const saveSyncConf = () => {
-    const conf = sync.url.trim() && sync.token.trim() ? { url: sync.url.trim(), token: sync.token.trim() } : null;
+    const url = sync.url.trim(), secure = /^https:\/\//.test(url) || /^http:\/\/(localhost|127\.0\.0\.1)[:/]/.test(url);
+    if (url && !secure) { setSyncMsg(L.needHttps); return; }        // never send the token over plain http
+    const conf = url && sync.token.trim() ? { url, token: sync.token.trim() } : null;
     live.current.conf = conf; saveSync(conf); setSyncMsg(conf ? '…' : ''); doSync();
   };
   if (!data) return <main><p class="center muted">{L.loading}</p></main>;
 
   const ctx: Ctx = {
     flags,
-    flag: (id, f) => { const next = { ...flags }; if (f) next[id] = f; else delete next[id]; setFlags(next); saveFlags(next); },
+    flag: (id, f) => { const next = { ...flags, [id]: f ?? { t: Date.now(), note: '', skill: flags[id]?.skill ?? 'g', del: true } }; setFlags(next); saveFlags(next); },
     L, lang: settings.lang, settings, cards: cards.current, rules, byId, retry: retry.current,
     save: (k, rec) => { cards.current[k] = rec; saveCards(cards.current); },
     log: logEvent,
@@ -155,7 +179,7 @@ export function App() {
   };
   const started = (sk: string) => Object.keys(cards.current).filter(k => k.endsWith(`:${sk}`)).length;
   const doExport = async () => {
-    const mem = { settings, cards: cards.current, retry: retry.current, flags };
+    const mem = { settings, cards: cards.current, retry: retry.current, flags, epoch: live.current.epoch };
     const blob = new Blob([JSON.stringify(await exportAll(mem, data.version))], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob); a.download = `le-mot-juste-${new Date().toISOString().slice(0, 10)}.json`; a.click();
@@ -163,7 +187,7 @@ export function App() {
   };
   const doImport = async (f?: File) => {
     if (!f) return;
-    try { await importAll(JSON.parse(await f.text())); alert(L.imported); location.reload(); } catch { alert(L.badFile); }
+    try { await importAll(JSON.parse(await f.text()), Date.now()); /* a restored backup is a fresh start: it wins on sync */ alert(L.imported); location.reload(); } catch { alert(L.badFile); }
   };
   const doReset = async () => { if (confirm(L.resetAsk)) { await resetAll(); location.reload(); } };
 
@@ -200,7 +224,7 @@ export function App() {
         <p class="note">{L.seen(started('g'), started('s'), data.words.length)}</p>
         <div class="row wrap">
           <button class="ghost" onClick={doExport}>{L.exportB}</button>
-          {Object.keys(flags).length > 0 && <button class="ghost" onClick={copyFlags}>{L.flagsCopy(Object.keys(flags).length)}</button>}
+          {nFlags > 0 && <button class="ghost" onClick={copyFlags}>{L.flagsCopy(nFlags)}</button>}
           <button class="ghost" onClick={() => file.current?.click()}>{L.importB}</button>
           <button class="ghost danger" onClick={doReset}>{L.reset}</button>
           <input type="file" accept="application/json,.json" hidden ref={file} onChange={e => doImport((e.target as HTMLInputElement).files?.[0])} />

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.2 — 2026-11-14
+
+- Sync no longer overwrites an answer given while it was running: it only adds what the other device did.
+- Removing a flag, erasing everything, or restoring a backup now carries over to your other devices.
+- A refused token says so; the sync address must be https.
+- Sync server: safe simultaneous uploads and connection timeouts.
+
 ## 0.4.1 — 2026-11-14
 
 - Removed the "J'ai deviné" button: answering by feel is the point, and a lucky guess gets caught at the next review.

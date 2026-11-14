@@ -4,7 +4,7 @@ import { merge, syncOnce } from './sync';
 import { SCHEMA } from './validate';
 
 const d1 = new Date(2026, 10, 10), d2 = new Date(2026, 10, 12);
-const dev = (cards: any, log: any[] = [], flags: any = {}, retry: any = { g: [], s: [] }) => ({ cards, log, flags, retry });
+const dev = (cards: any, log: any[] = [], flags: any = {}, retry: any = { g: [], s: [] }, epoch = 0) => ({ cards, log, flags, retry, epoch });
 const ev = (t: number, k = 'a#n:g') => ({ t, k, kind: 'first' as const, ok: true, r: 3 });
 const file = (d: any) => ({ app: 'le-mot-juste', schema: SCHEMA, ...d });
 
@@ -20,6 +20,16 @@ describe('merge', () => {
       expect(m.flags['a#n'].note).toBe('new');
       expect(m.retry.g).toEqual(['b#n']);                                  // the phone was used last
     }
+  });
+  it('lets a removed flag stay removed', () => {
+    const a = dev({}, [], { 'a#n': { t: 9, note: '', skill: 'g', del: true } }), b = dev({}, [], { 'a#n': { t: 5, note: 'odd', skill: 'g' } });
+    expect(merge(a, b).flags['a#n'].del).toBe(true);
+    expect(merge(b, a).flags['a#n'].del).toBe(true);
+  });
+  it('lets a reset replace the other device instead of being undone by it', () => {
+    const wiped = dev({}, [], {}, { g: [], s: [] }, 500), old = dev({ 'a#n:g': review(undefined, Rating.Good, d1) }, [ev(1)]);
+    expect(merge(wiped, old)).toBe(wiped);
+    expect(merge(old, wiped)).toBe(wiped);
   });
 });
 
