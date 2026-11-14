@@ -15,6 +15,8 @@ export interface Word {
   el: boolean;
   def: string; en: string; ex: string; exEn: string; tags: string[];
   note?: string; noteEn?: string;
+  /** Mass or one-of-a-kind noun (eau, soleil): never quizzed or shown with un/une. */
+  unc?: boolean;
 }
 export interface Rule { end: string; g: G; pct: number; n: number; examples: string[]; exceptions: string[] }
 /** Saved state of one card: the FSRS card plus when it was first seen. */

@@ -9,6 +9,8 @@ Two trainers over one word list. Every noun has two independent memory tracks:
 
 - Prompt: French definition (translation behind a toggle), the bare noun, two article buttons.
 - Article pair: un/une, le/la, or mixed (also ce/cette, mon/ma). Never a form that hides the gender.
+  Mass and unique nouns (`unc`, list in `build_data.py`) never get un/une: "une eau" is not French
+  anyone practises.
 - Feedback: verdict, a badge (follows the -X pattern / exception / no pattern), the rule sentence
   with its measured reliability, an example sentence. Gender colour appears only after answering.
 - No "I guessed" button (removed in 0.4.1): answering by feel is how gender is meant to work, and a

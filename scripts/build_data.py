@@ -40,6 +40,14 @@ REVIEWED = dict(w.split(":") for w in  """maison:f orange:f œuf:m voiture:f mai
 poste:fm cours:m page:f radio:f mode:f tour:m politique:f justice:f carrière:f critique:f mémoire:f manche:f voile:f
 somme:f vase:m hymne:m couple:m aide:f chance:f graphique:m souris:f bogue:m suspense:m natel:m votation:f
 bancomat:m tablard:m carnotzet:m""".split())
+# Mass nouns and one-of-a-kind nouns: "un/une" in front of them is odd ("une eau", "un soleil"),
+# so the app quizzes them with le/la, ce/cette or mon/ma instead. Only lemmas present in the list matter.
+UNCOUNTABLE = set("""eau lait riz sucre sel poivre beurre farine huile argent sable neige air essence miel monnaie
+courage patience santé chômage tourisme sommeil faim soif humour électricité météo natation informatique
+nourriture circulation justice paix bétail linge soleil lune ciel nord sud monde passé avenir 
+or fer bois cuir coton laine plastique pétrole gaz vapeur fumée poussière boue pluie
+recherche physique chimie biologie économie grammaire politesse confiance honte fierté tristesse joie colère
+bonheur malheur trafic pollution sécurité liberté égalité violence pauvreté richesse""".split())
 MIN_N, MIN_SHARE = 15, 0.85          # an ending becomes a guideline above these
 MIN_FREQ = 0.5                       # Lexique nouns rarer than this (per million) are ignored
 
@@ -165,6 +173,8 @@ def main():
                  "el": bool(re.match(r"[aeiouyàâéèêëîïôûœ]", l)) or h == "muet",
                  "def": e["def"], "en": e["en"], "ex": e["ex"], "exEn": e["exEn"], "tags": tags,
                  "_f": lx["f"] if lx else 0.0}
+            if l in UNCOUNTABLE:
+                w["unc"] = True
             for k in ("note", "noteEn"):
                 if e.get(k):
                     w[k] = e[k]
@@ -202,6 +212,7 @@ def main():
     for k in sorted(flags):
         R += [f"### {k} ({len(flags[k])})", "", ", ".join(flags[k]) if not k.startswith("example") else "\n".join("- " + x for x in flags[k]), ""]
     R += ["## h-words", "", ", ".join(f"{w['l']} ({'l’' if w['el'] else 'le/la'})" for w in words if w["l"].startswith("h")) or "none", ""]
+    R += ["## Quizzed without un/une (mass or unique nouns)", "", ", ".join(w["l"] for w in words if w.get("unc")), ""]
     R += ["## Exceptions in our list", "", ", ".join(f"{w['l']} ({w['g']}, -{w['end']})" for w in words if w["end"] and rule_by_end[w["end"]]["g"] != w["g"]), ""]
     R += ["## Ending guidelines (measured on Lexique)", "", "| ending | gender | share | nouns | top exceptions |", "|---|---|---|---|---|"]
     R += [f"| -{r['end']} | {r['g']} | {r['pct']}% | {r['n']} | {', '.join(r['exceptions'])} |" for r in rules]

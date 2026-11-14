@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.4 — 2026-11-14
+
+- Round summary: "needed another attempt" now counts only words missed in this round, and words carried
+  over from an earlier round are mentioned separately.
+- After flagging a card, a line says where the flags can be found.
+- Mass nouns and one-of-a-kind nouns (eau, lait, argent, soleil…) are no longer shown with un/une:
+  they get le/la, ce/cette or mon/ma, and cet/cette before a vowel.
+
 ## 0.4.3 — 2026-11-14
 
 - Two tabs of the app on one device no longer overwrite each other's progress.

@@ -36,6 +36,16 @@ describe('pickPair', () => {
   });
 });
 
+describe('mass nouns', () => {
+  it('are never quizzed with un/une, nor with a form that hides the gender', () => {
+    const eau = w('eau', 'f', { unc: true }), lait = w('lait', 'm', { unc: true, el: false });
+    for (const mode of ['un', 'le', 'mix'] as const) for (let r = 0; r < 1; r += 0.1) {
+      expect(pickPair(eau, mode, () => r)).toBe(PAIRS.cet);
+      expect([PAIRS.le, PAIRS.ce, PAIRS.mon]).toContain(pickPair(lait, mode, () => r));
+    }
+  });
+});
+
 describe('scheduling', () => {
   const now = new Date(2026, 10, 14, 12);
   it('pushes a correct card into the future and keeps a missed one close', () => {

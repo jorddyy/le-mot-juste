@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { PAIRS, pickPair, type Pair } from './lib/articles';
+import { basePair, PAIRS, pickPair, type Pair } from './lib/articles';
 import type { Strings } from './lib/i18n';
 import { key, Rating, review, type Grade, type Item } from './lib/sched';
 import { progress } from './lib/progress';
@@ -26,6 +26,8 @@ interface Ans { ok: boolean; g?: G; base?: Rec; raw?: string; check?: Check }
 export interface St {
   q: Item[]; i: number; ans: Ans | null; done: boolean; first: number; total: number;
   miss: Word[]; left: number; showEn: boolean; revealed: boolean; pair: Pair;
+  /** Words owed from an earlier round that were added to this one. */
+  carried?: number;
 }
 
 const Html = ({ html, cls }: { html: string; cls?: string }) => <div class={cls} dangerouslySetInnerHTML={{ __html: html }} />;
@@ -34,7 +36,7 @@ const Html = ({ html, cls }: { html: string; cls?: string }) => <div class={cls}
 function Noun({ w, mark }: { w: Word; mark: boolean }) {
   return mark && w.end ? <>{w.l.slice(0, -w.end.length)}<span class="end">{w.end}</span></> : <>{w.l}</>;
 }
-export function Chunk({ w, pair = PAIRS.un, mark = false }: { w: Word; pair?: Pair; mark?: boolean }) {
+export function Chunk({ w, pair = basePair(w), mark = false }: { w: Word; pair?: Pair; mark?: boolean }) {
   return <><span class={`g-${w.g}`}>{pair[w.g]}</span> <Noun w={w} mark={mark} /></>;
 }
 /** Does the noun follow an ending guideline, break one, or have none? */
@@ -50,11 +52,11 @@ function ruleHtml(w: Word, pair: Pair, ctx: Ctx): string {
 
 export function Trainer({ skill, pool, ctx, saved, onState, reviewOnly = false }: { reviewOnly?: boolean; skill: Skill; pool: Word[]; ctx: Ctx; saved?: St; onState?: (s: St) => void }) {
   const { L, settings, cards } = ctx;
-  const pairFor = (w: Word) => (skill === 'g' ? pickPair(w, settings.art) : PAIRS.un);
+  const pairFor = (w: Word) => (skill === 'g' ? pickPair(w, settings.art) : basePair(w));
   const mk = (newCount = reviewOnly ? 0 : 10): St => {
     const { q, left, total } = startRound(skill, pool, ctx.byId, cards, ctx.retry[skill], newCount, new Date());
     return {
-      q, i: 0, ans: null, done: !q.length, first: 0, total, miss: [], left,
+      q, i: 0, ans: null, done: !q.length, first: 0, total, miss: [], left, carried: q.length - total,
       showEn: false, revealed: false, pair: q[0] ? pairFor(q[0].w) : PAIRS.un,
     };
   };
@@ -65,8 +67,9 @@ export function Trainer({ skill, pool, ctx, saved, onState, reviewOnly = false }
 
   useEffect(() => { onState?.(st); }, [st]);
   const [flagOpen, setFlagOpen] = useState(false);
+  const [flagSaved, setFlagSaved] = useState(false);
   const flagNote = useRef<HTMLInputElement>(null);
-  useEffect(() => setFlagOpen(false), [st.i]);
+  useEffect(() => { setFlagOpen(false); setFlagSaved(false); }, [st.i]);
   useEffect(() => {         // a change of article mode applies to the card on screen, unless already answered
     setSt(s => (s.done || s.ans ? s : { ...s, pair: pairFor(s.q[s.i].w) }));
   }, [settings.art]);
@@ -154,7 +157,8 @@ export function Trainer({ skill, pool, ctx, saved, onState, reviewOnly = false }
         <div class="progWrap"><div class="progress"><i style={{ width: '100%' }} /></div></div>
         <section class="card">
           {practised ? <>
-            <p class="def center round-summary">{L.summary(practised, new Set([...st.miss.map(wd => wd.id), ...st.q.filter(it => it.rep).map(it => it.w.id)]).size)}</p>
+            <p class="def center round-summary">{L.summary(practised, st.miss.length)}</p>
+            {!!st.carried && <p class="center muted tight">{L.carried(st.carried)}</p>}
             {st.miss.length ? <div><b>{L.review}</b>
               <ul class="miss">{st.miss.map(m => <li key={m.id}><span><Chunk w={m} mark /></span><span class="note">{m.en} <Pill w={m} ctx={ctx} /></span></li>)}</ul>
             </div> : <p class="center"><b>{L.perfect}</b></p>}
@@ -182,8 +186,8 @@ export function Trainer({ skill, pool, ctx, saved, onState, reviewOnly = false }
       <button class={`flagBtn ${flagged ? 'on' : ''}`} aria-label={L.flag} title={L.flag} aria-expanded={flagOpen} onClick={() => setFlagOpen(!flagOpen)}>⚑</button>
     </div>
   );
-  const saveFlag = () => { ctx.flag(w.id, { t: Date.now(), note: flagNote.current?.value.trim() ?? '', skill }); setFlagOpen(false); };
-  const flagRow = flagOpen && (
+  const saveFlag = () => { ctx.flag(w.id, { t: Date.now(), note: flagNote.current?.value.trim() ?? '', skill }); setFlagOpen(false); setFlagSaved(true); };
+  const flagForm = flagOpen && (
     <div class="flagRow">
       <input type="text" class="plain" ref={flagNote} key={w.id} defaultValue={flagged?.note ?? ''} placeholder={L.flagPh} maxLength={500} autoFocus
         onKeyDown={e => { if (e.key === 'Enter') saveFlag(); else if (e.key === 'Escape') setFlagOpen(false); }} />
@@ -191,6 +195,7 @@ export function Trainer({ skill, pool, ctx, saved, onState, reviewOnly = false }
       {flagged && <button class="ghost" onClick={() => { ctx.flag(w.id, null); setFlagOpen(false); }}>{L.flagDel}</button>}
     </div>
   );
+  const flagRow = <>{flagForm}{!flagOpen && flagSaved && <div class="note">{L.flagSaved}</div>}</>;
   const meaning = (
     <div>
       <div class="def">{w.def}</div>
