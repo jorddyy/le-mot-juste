@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.3 — 2026-11-14
+
+- Two tabs of the app on one device no longer overwrite each other's progress.
+
 ## 0.4.2 — 2026-11-14
 
 - Sync no longer overwrites an answer given while it was running: it only adds what the other device did.

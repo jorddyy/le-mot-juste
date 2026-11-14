@@ -78,6 +78,8 @@ export function App() {
   const [syncMsg, setSyncMsg] = useState('');
   const live = useRef<{ settings: Settings; flags: Record<string, import('./lib/types').Flag>; version: string; epoch: number; conf: SyncConf | null; busy: Promise<void> | null }>({ settings: DEFAULTS, flags: {}, version: '', epoch: 0, conf: null, busy: null });
   const L401 = useRef('');
+  const chan = useRef<BroadcastChannel | null>(null);
+  const tell = (m: unknown) => { try { chan.current?.postMessage(m); } catch { /* a tab that cannot be told is only a missed convenience */ } };
   /** Merge with the user's own sync server, if one is configured. Never throws; reports in Settings. */
   const doSync = () => (live.current.busy ??= (async () => {
     const { conf, settings: st, flags: fl, version } = live.current;
@@ -99,7 +101,7 @@ export function App() {
           const cur = cards.current[k];
           if (!cur || reviewedAt(r) > reviewedAt(cur)) { cards.current[k] = r; changed = true; }
         }
-        if (changed) saveCards(cards.current);
+        if (changed) { saveCards(cards.current); tell({ t: 'cards', cards: merged.cards }); }
         if (JSON.stringify(retry.current) === retryBefore) { retry.current.g = merged.retry.g; retry.current.s = merged.retry.s; saveRetry(retry.current); }
         setFlags(cur => {
           const next = { ...cur };
@@ -132,6 +134,22 @@ export function App() {
     }).catch(() => setErr(true));
     onWriteError(() => setSaveErr(true));
     onUpdateReady(() => setUpdate(true));
+    // Other tabs of the app on this device: every tab saves the whole progress map, so each must
+    // learn what the others did, or the last one to save would silently drop their answers.
+    if ('BroadcastChannel' in window) {
+      chan.current = new BroadcastChannel('lmj');
+      chan.current.onmessage = e => {
+        const m = e.data ?? {};
+        if (m.t === 'reload') { location.reload(); return; }      // reset or restore elsewhere: this tab's copy is obsolete
+        if (m.t === 'cards') for (const [k, r] of Object.entries(m.cards as Record<string, Rec>)) {
+          const cur = cards.current[k];
+          if (!cur || reviewedAt(r) >= reviewedAt(cur)) cards.current[k] = r;
+        }
+        if (m.t === 'retry') { retry.current.g = m.retry.g; retry.current.s = m.retry.s; }
+        if (m.t === 'flags') setFlags(m.flags);
+        bump(n => n + 1);
+      };
+    }
     document.addEventListener('visibilitychange', () => { if (document.hidden) doSync(); });
   }, []);
   useEffect(() => {
@@ -157,13 +175,13 @@ export function App() {
 
   const ctx: Ctx = {
     flags,
-    flag: (id, f) => { const next = { ...flags, [id]: f ?? { t: Date.now(), note: '', skill: flags[id]?.skill ?? 'g', del: true } }; setFlags(next); saveFlags(next); },
+    flag: (id, f) => { const next = { ...flags, [id]: f ?? { t: Date.now(), note: '', skill: flags[id]?.skill ?? 'g', del: true } }; setFlags(next); saveFlags(next); tell({ t: 'flags', flags: next }); },
     L, lang: settings.lang, settings, cards: cards.current, rules, byId, retry: retry.current,
-    save: (k, rec) => { cards.current[k] = rec; saveCards(cards.current); },
+    save: (k, rec) => { cards.current[k] = rec; saveCards(cards.current); tell({ t: 'cards', cards: { [k]: rec } }); },
     log: logEvent,
     owe: (sk, id, owed) => {
       const ids = retry.current[sk], next = owed ? addRetry(ids, id) : dropRetry(ids, id);
-      if (next !== ids && next.length !== ids.length) { retry.current[sk] = next; saveRetry(retry.current); }
+      if (next !== ids && next.length !== ids.length) { retry.current[sk] = next; saveRetry(retry.current); tell({ t: 'retry', retry: retry.current }); }
     },
   };
   const dark = isDark(settings.theme, matchMedia('(prefers-color-scheme: dark)').matches);
@@ -187,9 +205,9 @@ export function App() {
   };
   const doImport = async (f?: File) => {
     if (!f) return;
-    try { await importAll(JSON.parse(await f.text()), Date.now()); /* a restored backup is a fresh start: it wins on sync */ alert(L.imported); location.reload(); } catch { alert(L.badFile); }
+    try { await importAll(JSON.parse(await f.text()), Date.now()); /* a restored backup is a fresh start: it wins on sync */ tell({ t: 'reload' }); alert(L.imported); location.reload(); } catch { alert(L.badFile); }
   };
-  const doReset = async () => { if (confirm(L.resetAsk)) { await resetAll(); location.reload(); } };
+  const doReset = async () => { if (confirm(L.resetAsk)) { await resetAll(); tell({ t: 'reload' }); location.reload(); } };
 
 
   return (

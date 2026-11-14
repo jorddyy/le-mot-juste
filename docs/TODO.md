@@ -8,7 +8,6 @@
 - [ ] Second senses for more two-gender nouns (la tour, la livre, le mode...), like `poste#n2`.
 
 ## Later
-- [ ] Two tabs on one device overwrite each other's progress (use a BroadcastChannel or re-read before saving).
 - [ ] Back up `/root/lmj-sync/data` on the user's server.
 - [ ] Word list pipeline: FLELex levels + Lexique + Wiktionary + Tatoeba, as separate files per licence.
       Confirm the Lexique licence (README says CC BY-SA 4.0, Lexique 4 page says CC BY-NC 4.0).
