@@ -27,7 +27,8 @@ export const T = {
     exportB: 'Exporter ma progression', importB: 'Importer', reset: 'Tout effacer', resetAsk: 'Effacer toute ta progression ? Cette action est définitive.',
     imported: 'Progression importée.', badFile: "Ce fichier n'est pas une sauvegarde valide.", close: 'Fermer',
     seen: (g: number, s: number, n: number) => `Mots commencés : genre ${g} / ${n} · sens ${s} / ${n}`,
-    noSave: 'Ce navigateur ne peut pas enregistrer ta progression (fenêtre privée ?).', loading: 'Chargement…', loadErr: 'Impossible de charger les mots.',
+    noSave: 'Ce navigateur ne peut pas enregistrer ta progression (fenêtre privée ?).',
+    saveFailed: "L'enregistrement a échoué : tes dernières réponses ne sont pas sauvegardées. Fais une copie maintenant :", loading: 'Chargement…', loadErr: 'Impossible de charger les mots.',
     version: 'Version', data: 'liste de mots', theme: 'Thème clair / sombre', sw: 'Suisse', levels: 'Niveaux',
   },
   en: {
@@ -53,7 +54,8 @@ export const T = {
     exportB: 'Export my progress', importB: 'Import', reset: 'Erase everything', resetAsk: 'Erase all your progress? This cannot be undone.',
     imported: 'Progress imported.', badFile: 'This file is not a valid backup.', close: 'Close',
     seen: (g: number, s: number, n: number) => `Words started: gender ${g} / ${n} · meaning ${s} / ${n}`,
-    noSave: 'This browser cannot save your progress (private window?).', loading: 'Loading…', loadErr: 'Could not load the words.',
+    noSave: 'This browser cannot save your progress (private window?).',
+    saveFailed: 'Saving failed: your latest answers are not stored. Make a copy now:', loading: 'Loading…', loadErr: 'Could not load the words.',
     version: 'Version', data: 'word list', theme: 'Light / dark theme', sw: 'Switzerland', levels: 'Levels',
   },
 } satisfies Record<Lang, unknown>;

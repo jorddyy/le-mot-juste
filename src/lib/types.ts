@@ -24,7 +24,15 @@ export interface Settings {
   /** New cards per day for the article trainer and for the word trainer. */
   newG: number; newS: number;
 }
-export interface LogEvent { t: number; k: string; r: number }
+/** Pending retries per skill: ids of words missed and not yet answered correctly. */
+export interface Retry { g: string[]; s: string[] }
+/**
+ * One answer, exactly as it happened. `first` = first answer to a card in a session (graded),
+ * `retry` = a repeat inside the session (not graded), `guess` = the user took back a correct
+ * answer with "I guessed" (re-grades the preceding `first`), `article` = a wrong article in a
+ * typed answer, charged to the gender card. `r` is the FSRS grade applied, absent when none was.
+ */
+export interface LogEvent { t: number; k: string; kind: 'first' | 'retry' | 'guess' | 'article'; ok: boolean; r?: number; a?: string }
 
 export const LEVELS: Level[] = ['A1', 'A2', 'B1', 'B2'];
 export const DEFAULTS: Settings = { lang: 'fr', theme: '', levels: ['A1', 'A2', 'B1'], art: 'mix', newG: 20, newS: 10 };

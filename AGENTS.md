@@ -7,7 +7,8 @@ Public repo. Read `docs/DESIGN.md` for the why, `docs/TODO.md` for what is next.
 
 | | |
 |---|---|
-| `npm run data` | Rebuild `public/data/*.json` from `data/src/*.json`; writes `build/report.md` |
+| `npm run data` | Rebuild `public/data/*.json` from `data/src/*.json`; writes `build/report.md`; exits 1 and writes no data while a `CHECK:` flag is open |
+| `npm run check:data` | CI gate (no Lexique needed): shipped data is a clean build of the current sources |
 | `npm run dev` | Dev server |
 | `npm test` | Unit tests (Vitest) |
 | `npm run build` | Type-check + production build into `dist/` |
@@ -20,7 +21,7 @@ Public repo. Read `docs/DESIGN.md` for the why, `docs/TODO.md` for what is next.
 | `data/src/*.json` | Hand-curated nouns (one entry per line). The source of truth for words |
 | `scripts/build_data.py` | Validates, dedupes, cross-checks gender against Lexique, measures ending rules, writes `public/data/words.json` + `rules.json` + `build/report.md` |
 | `raw/` (gitignored) | `Lexique383.tsv`, downloaded from lexique.org. Never commit |
-| `src/lib/` | Pure logic: `sched.ts` (FSRS + daily plan), `text.ts` (typed-answer check), `articles.ts` (which article pair), `store.ts` (IndexedDB), `i18n.ts` (FR/EN strings), `types.ts` |
+| `src/lib/` | Pure logic: `sched.ts` (FSRS + daily plan), `session.ts` (rounds and owed retries), `text.ts` (typed-answer check), `articles.ts` (which article pair), `validate.ts` (backup/settings validation, schema), `store.ts` (IndexedDB), `i18n.ts` (FR/EN strings), `types.ts` |
 | `src/trainer.tsx` | One round of cards for a skill (`g` = gender, `s` = meaning) |
 | `src/app.tsx` | Shell: tabs, levels, settings dialog, rules page |
 | `.github/workflows/pages.yml` | Tests, builds and deploys `main` to GitHub Pages (https://jorddyy.github.io/le-mot-juste/) |
@@ -36,9 +37,13 @@ Public repo. Read `docs/DESIGN.md` for the why, `docs/TODO.md` for what is next.
   review. Any `CHECK:` flag in the report must be resolved before shipping.
 - **Never show an article that hides the gender** (l', mon before a vowel, les/des) as a prompt.
   `pickPair` enforces this; `Word.el` marks nouns that elide.
-- **Word ids are stable** (`lemma#n`). Progress is keyed `id:skill`; renaming an id orphans progress.
-- **Saved data has a schema version** (`SCHEMA` in `store.ts`): bump it and migrate in `load` when
-  the shape changes. Every answer is also logged raw (`lmj-log` store).
+- **Word ids are stable** (`lemma#n`; a second sense with another gender is `lemma#n2`, marked `"s": 2`
+  in the source). Progress is keyed `id:skill`; renaming an id orphans progress.
+- **After editing `data/src`, run `npm run data` and commit `public/data`**: CI rejects stale data.
+- **Saved data has a schema version** (`SCHEMA` in `validate.ts`): bump it and migrate in `load` when
+  the shape changes. Imports go through `parseBackup` (validate everything, then write, roll back on
+  failure). Scheduling and logging are separate: every answer is logged (`lmj-log` store, `LogEvent`
+  kinds first/retry/guess/article); only the first answer of a session is graded.
 - **Versioning.** Bump `version` in `package.json` and add a `CHANGELOG.md` entry for every
   user-visible change. The app shows version, commit and build date, plus the data version (a hash
   of the word list).

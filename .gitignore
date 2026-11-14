@@ -3,3 +3,4 @@ dist/
 raw/
 build/
 *.log
+__pycache__/

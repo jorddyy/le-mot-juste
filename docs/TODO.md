@@ -5,7 +5,7 @@
 - [ ] Offline support (service worker with an "update available" prompt).
 - [ ] Review the model-written definitions/examples; fix anything odd found while using the app.
 - [ ] Sibling burying: don't show a noun's gender and meaning cards in the same session.
-- [ ] Per-sense gender for nouns with two genders (le/la poste, le/la tour, le/la livre).
+- [ ] Second senses for more two-gender nouns (la tour, la livre, le mode...), like `poste#n2`.
 
 ## Later
 - [ ] Word list pipeline: FLELex levels + Lexique + Wiktionary + Tatoeba, as separate files per licence.

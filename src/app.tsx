@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { PAIRS } from './lib/articles';
 import { T } from './lib/i18n';
-import { exportAll, importAll, load, logEvent, resetAll, saveCards, saveSettings } from './lib/store';
-import { DEFAULTS, LEVELS, type ArtMode, type G, type Lang, type Level, type Rec, type Rule, type Settings, type Word } from './lib/types';
-import { Chunk, Trainer, type Ctx } from './trainer';
+import { addRetry, dropRetry } from './lib/session';
+import { exportAll, importAll, load, logEvent, onWriteError, resetAll, saveCards, saveRetry, saveSettings } from './lib/store';
+import { DEFAULTS, LEVELS, type ArtMode, type G, type Lang, type Level, type Rec, type Retry, type Rule, type Settings, type Word } from './lib/types';
+import { isDark } from './lib/validate';
+import { Chunk, Trainer, type Ctx, type St } from './trainer';
 
 declare const __BUILD__: { version: string; commit: string; time: string };
 type Tab = 'g' | 's' | 'r';
@@ -66,13 +68,19 @@ export function App() {
   const [persistent, setPersistent] = useState(true);
   const [tab, setTab] = useState<Tab>('g');
   const [, bump] = useState(0);
+  const [saveErr, setSaveErr] = useState(false);
   const cards = useRef<Record<string, Rec>>({});
+  const retry = useRef<Retry>({ g: [], s: [] });
+  /** The round in progress in each trainer, kept while the user looks at another tab. */
+  const sessions = useRef<Record<string, St>>({});
   const dialog = useRef<HTMLDialogElement>(null), file = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     Promise.all([fetchData(), load()]).then(([d, saved]) => {
-      cards.current = saved.cards; setSettings(saved.settings); setPersistent(saved.persistent); setData(d);
+      cards.current = saved.cards; retry.current = saved.retry;
+      setSettings(saved.settings); setPersistent(saved.persistent); setData(d);
     }).catch(() => setErr(true));
+    onWriteError(() => setSaveErr(true));
   }, []);
   useEffect(() => {
     if (settings.theme) document.documentElement.dataset.theme = settings.theme; else delete document.documentElement.dataset.theme;
@@ -83,15 +91,22 @@ export function App() {
   const set = (patch: Partial<Settings>) => { const s = { ...settings, ...patch }; setSettings(s); saveSettings(s); };
   const pool = useMemo(() => (data ? data.words.filter(w => settings.levels.includes(w.lv)) : []), [data, settings.levels]);
   const rules = useMemo(() => new Map((data?.rules ?? []).map(r => [r.end, r])), [data]);
+  const byId = useMemo(() => new Map((data?.words ?? []).map(w => [w.id, w])), [data]);
 
   if (err) return <main><p class="center">{L.loadErr}</p></main>;
   if (!data) return <main><p class="center muted">{L.loading}</p></main>;
 
   const ctx: Ctx = {
-    L, lang: settings.lang, settings, cards: cards.current, rules,
-    save: (k, rec, ev) => { cards.current[k] = rec; saveCards(cards.current); logEvent(ev); },
+    L, lang: settings.lang, settings, cards: cards.current, rules, byId, retry: retry.current,
+    save: (k, rec) => { cards.current[k] = rec; saveCards(cards.current); },
+    log: logEvent,
+    owe: (sk, id, owed) => {
+      const ids = retry.current[sk], next = owed ? addRetry(ids, id) : dropRetry(ids, id);
+      if (next !== ids && next.length !== ids.length) { retry.current[sk] = next; saveRetry(retry.current); }
+    },
   };
-  const dark = (settings.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')) === 'dark';
+  const dark = isDark(settings.theme, matchMedia('(prefers-color-scheme: dark)').matches);
+  const tkey = `${tab}|${settings.levels.join()}|${settings.newG}|${settings.newS}`;
   const toggleLevel = (l: Level) => {
     const has = settings.levels.includes(l);
     if (has && settings.levels.length === 1) return;
@@ -99,7 +114,8 @@ export function App() {
   };
   const started = (sk: string) => Object.keys(cards.current).filter(k => k.endsWith(`:${sk}`)).length;
   const doExport = async () => {
-    const blob = new Blob([JSON.stringify(await exportAll(data.version))], { type: 'application/json' });
+    const mem = { settings, cards: cards.current, retry: retry.current };
+    const blob = new Blob([JSON.stringify(await exportAll(mem, data.version))], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob); a.download = `le-mot-juste-${new Date().toISOString().slice(0, 10)}.json`; a.click();
     URL.revokeObjectURL(a.href);
@@ -125,6 +141,7 @@ export function App() {
       </header>
       <Seg value={tab} options={[['g', L.tabs.g], ['s', L.tabs.s], ['r', L.tabs.r]]} onChange={(t: Tab) => setTab(t)} />
       {!persistent && <p class="warn">{L.noSave}</p>}
+      {saveErr && <p class="warn">{L.saveFailed} <button class="linkish" onClick={doExport}>{L.exportB}</button></p>}
       {tab !== 'r' && (
         <div class="controls">
           <div class="chips" role="group" aria-label={L.levels}>
@@ -135,7 +152,7 @@ export function App() {
       )}
       {tab === 'r'
         ? <Rules data={data} ctx={ctx} />
-        : <Trainer key={`${tab}|${settings.levels.join()}|${settings.newG}|${settings.newS}`} skill={tab} pool={pool} ctx={ctx} />}
+        : <Trainer key={tkey} skill={tab} pool={pool} ctx={ctx} saved={sessions.current[tkey]} onState={s => { sessions.current = { ...sessions.current, [tkey]: s }; }} />}
 
       <dialog ref={dialog} onClose={() => bump(n => n + 1)}>
         <h2>{L.settings}</h2>

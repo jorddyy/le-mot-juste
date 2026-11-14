@@ -1,10 +1,11 @@
 {
   "name": "le-mot-juste",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "type": "module",
   "scripts": {
     "data": "python3 scripts/build_data.py",
+    "check:data": "python3 scripts/check_data.py",
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
@@ -18,6 +19,7 @@
   },
   "devDependencies": {
     "@preact/preset-vite": "^2.10.6",
+    "fake-indexeddb": "^6.2.8",
     "typescript": "^7.0.2",
     "vite": "^8.3.8",
     "vitest": "^5.1.0"

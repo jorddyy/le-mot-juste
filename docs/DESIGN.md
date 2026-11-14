@@ -27,7 +27,10 @@ Two trainers over one word list. Every noun has two independent memory tracks:
 - Daily plan per skill: due reviews (most overdue first) with new words spread through them.
   New words: round-robin over the selected levels, most frequent first, one themed word in three.
 - Rounds of 15. A missed card returns 4 cards later until answered correctly; only the first
-  answer of the day is graded. The study day rolls over at 04:00.
+  answer of a session is graded. The study day rolls over at 04:00.
+- A missed word is **owed** until corrected: its id sits in a saved retry list per skill, so it
+  returns after a tab switch, a level change or a reload, whatever its FSRS due date. The round in
+  progress is also kept in memory while another tab is open (lost on reload; the owed words are not).
 
 ## Ending rules
 

@@ -1,21 +1,25 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { PAIRS, pickPair, type Pair } from './lib/articles';
 import type { Strings } from './lib/i18n';
-import { key, plan, Rating, review, type Grade, type Item } from './lib/sched';
+import { key, Rating, review, type Grade, type Item } from './lib/sched';
+import { GAP, startRound } from './lib/session';
 import { checkAnswer, type Check } from './lib/text';
-import type { G, LogEvent, Rec, Rule, Settings, Skill, Word } from './lib/types';
+import type { G, LogEvent, Rec, Retry, Rule, Settings, Skill, Word } from './lib/types';
 
 /** What the trainers need from the app shell. `cards` is the live, mutable progress map. */
 export interface Ctx {
   L: Strings; lang: 'fr' | 'en'; settings: Settings; cards: Record<string, Rec>; rules: Map<string, Rule>;
-  save: (k: string, rec: Rec, ev: LogEvent) => void;
+  byId: Map<string, Word>; retry: Retry;
+  /** Store a card's new schedule. */
+  save: (k: string, rec: Rec) => void;
+  /** Record an answer as it happened (independent of whether it was graded). */
+  log: (ev: LogEvent) => void;
+  /** A missed word is owed a correct answer until `owe(..., false)` clears it. */
+  owe: (skill: Skill, id: string, owed: boolean) => void;
 }
 
-const ROUND = 15;      // cards per round
-const GAP = 4;         // a missed card comes back this many cards later
-
 interface Ans { ok: boolean; g?: G; base?: Rec; guessed?: boolean; raw?: string; check?: Check }
-interface St {
+export interface St {
   q: Item[]; i: number; ans: Ans | null; done: boolean; first: number; total: number;
   miss: Word[]; left: number; showEn: boolean; revealed: boolean; pair: Pair;
 }
@@ -40,37 +44,46 @@ function ruleHtml(w: Word, pair: Pair, ctx: Ctx): string {
   return !r ? ctx.L.noRule(c) : r.g === w.g ? ctx.L.rule(r.end, r.g, r.pct) : ctx.L.exc(r.end, r.g, r.pct, c);
 }
 
-export function Trainer({ skill, pool, ctx }: { skill: Skill; pool: Word[]; ctx: Ctx }) {
+export function Trainer({ skill, pool, ctx, saved, onState }: { skill: Skill; pool: Word[]; ctx: Ctx; saved?: St; onState?: (s: St) => void }) {
   const { L, settings, cards } = ctx;
   const pairFor = (w: Word) => (skill === 'g' ? pickPair(w, settings.art) : PAIRS.un);
   const mk = (extra = 0): St => {
-    const p = plan(skill, pool, cards, skill === 'g' ? settings.newG : settings.newS, new Date(), extra);
-    // A meaning card starts as recognition (read, recall, self-grade) and becomes typed production after two reviews.
-    const q = p.queue.slice(0, ROUND).map(it => ({ ...it, recog: skill === 's' && (cards[key(it.w, 's')]?.c.reps ?? 0) < 2 }));
+    const { q, left, total } = startRound(skill, pool, ctx.byId, cards, ctx.retry[skill], skill === 'g' ? settings.newG : settings.newS, new Date(), extra);
     return {
-      q, i: 0, ans: null, done: !q.length, first: 0, total: q.length, miss: [], left: p.queue.length - q.length,
+      q, i: 0, ans: null, done: !q.length, first: 0, total, miss: [], left,
       showEn: false, revealed: false, pair: q[0] ? pairFor(q[0].w) : PAIRS.un,
     };
   };
-  const [st, setSt] = useState<St>(mk);
+  // `saved` is the round this trainer was showing before the user visited another tab.
+  const [st, setSt] = useState<St>(() => saved ?? mk());
   const input = useRef<HTMLInputElement>(null), nextBtn = useRef<HTMLButtonElement>(null);
   const item = st.q[st.i], w = item?.w;
 
+  useEffect(() => { onState?.(st); }, [st]);
   useEffect(() => {         // a change of article mode applies to the card on screen, unless already answered
     setSt(s => (s.done || s.ans ? s : { ...s, pair: pairFor(s.q[s.i].w) }));
   }, [settings.art]);
   useEffect(() => { if (st.ans || st.done) nextBtn.current?.focus(); else input.current?.focus(); }, [st.i, !!st.ans, st.done, st.revealed]);
 
-  const commit = (wd: Word, sk: Skill, grade: Grade, base: Rec | undefined) => {
-    const k = key(wd, sk);
-    ctx.save(k, review(base, grade), { t: Date.now(), k, r: grade });
+  // Scheduling and logging are separate: every answer is logged, only the first one of a session is graded.
+  const grade = (sk: Skill, g: Grade, base: Rec | undefined): Grade | undefined => {
+    if (item.rep) return undefined;
+    ctx.save(key(w, sk), review(base, g));
+    return g;
   };
+  const log = (sk: Skill, kind: LogEvent['kind'], ok: boolean, r: Grade | undefined, a?: string) =>
+    ctx.log({ t: Date.now(), k: key(w, sk), kind, ok, ...(r !== undefined && { r }), ...(a !== undefined && { a }) });
+  const kind = (): LogEvent['kind'] => (item.rep ? 'retry' : 'first');
+  /** Book the outcome: a miss is owed a correct answer, a correct repeat settles it. */
+  const settle = (ok: boolean) => { if (!ok) ctx.owe(skill, w.id, true); else if (item.rep) ctx.owe(skill, w.id, false); };
   const requeue = (s: St): Item[] => {
     const q = s.q.slice();
     q.splice(Math.min(s.i + GAP, q.length), 0, { ...s.q[s.i], rep: true, isNew: false });
     return q;
   };
   const missed = (s: St) => (s.miss.includes(w) ? s.miss : [...s.miss, w]);
+  const tally = (s: St, ok: boolean): Pick<St, 'q' | 'first' | 'miss'> =>
+    ({ q: ok ? s.q : requeue(s), first: s.first + (ok && !item.rep ? 1 : 0), miss: ok ? s.miss : missed(s) });
   const advance = (s: St): St => {
     const i = s.i + 1;
     return i >= s.q.length ? { ...s, i, ans: null, done: true }
@@ -80,31 +93,32 @@ export function Trainer({ skill, pool, ctx }: { skill: Skill; pool: Word[]; ctx:
   function answerG(g: G) {
     if (st.ans || st.done) return;
     const ok = g === w.g, base = cards[key(w, 'g')];
-    if (!item.rep) {
-      // A new noun that obeys a reliable ending needs little review: schedule it far out.
-      const r = ctx.rules.get(w.end), easy = ok && !base && !!r && r.g === w.g && r.pct >= 90;
-      commit(w, 'g', ok ? (easy ? Rating.Easy : Rating.Good) : Rating.Again, base);
-    }
-    setSt({ ...st, ans: { ok, g, base }, q: ok ? st.q : requeue(st), first: st.first + (ok && !item.rep ? 1 : 0), miss: ok ? st.miss : missed(st) });
+    // A new noun that obeys a reliable ending needs little review: schedule it far out.
+    const r = ctx.rules.get(w.end), easy = ok && !base && !!r && r.g === w.g && r.pct >= 90;
+    log('g', kind(), ok, grade('g', ok ? (easy ? Rating.Easy : Rating.Good) : Rating.Again, base), g);
+    settle(ok);
+    setSt({ ...st, ans: { ok, g, base }, ...tally(st, ok) });
   }
   function guessed() {
     const a = st.ans;
     if (!a?.ok || a.guessed) return;
-    if (!item.rep) commit(w, 'g', Rating.Again, a.base);       // a lucky guess is not knowledge: undo the credit
+    // A lucky guess is not knowledge: take back the credit (re-grade from the card as it was before).
+    log('g', 'guess', false, grade('g', Rating.Again, a.base));
+    ctx.owe('g', w.id, true);
     setSt({ ...st, ans: { ...a, guessed: true }, q: requeue(st), first: st.first - (item.rep ? 0 : 1), miss: missed(st) });
   }
   function gradeRecog(knew: boolean) {
-    if (!item.rep) commit(w, 's', knew ? Rating.Good : Rating.Again, cards[key(w, 's')]);
-    setSt(advance({ ...st, q: knew ? st.q : requeue(st), first: st.first + (knew && !item.rep ? 1 : 0), miss: knew ? st.miss : missed(st) }));
+    log('s', kind(), knew, grade('s', knew ? Rating.Good : Rating.Again, cards[key(w, 's')]), knew ? 'knew' : 'not yet');
+    settle(knew);
+    setSt(advance({ ...st, ...tally(st, knew) }));
   }
   function submit() {
     if (st.ans || st.done) return;
     const raw = input.current?.value.trim() ?? '', check = checkAnswer(raw, w), ok = check.word;
-    if (!item.rep) {
-      commit(w, 's', ok ? Rating.Good : Rating.Again, cards[key(w, 's')]);
-      if (ok && check.art === false) commit(w, 'g', Rating.Again, cards[key(w, 'g')]);   // wrong article: the gender track pays
-    }
-    setSt({ ...st, ans: { ok, raw, check }, q: ok ? st.q : requeue(st), first: st.first + (ok && !item.rep ? 1 : 0), miss: ok ? st.miss : missed(st) });
+    log('s', kind(), ok, grade('s', ok ? Rating.Good : Rating.Again, cards[key(w, 's')]), raw);
+    if (ok && check.art === false) log('g', 'article', false, grade('g', Rating.Again, cards[key(w, 'g')]), raw);   // the gender track pays
+    settle(ok);
+    setSt({ ...st, ans: { ok, raw, check }, ...tally(st, ok) });
   }
   const next = () => setSt(advance(st));
   const toggleEn = () => setSt({ ...st, showEn: !st.showEn });
