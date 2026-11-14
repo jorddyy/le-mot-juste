@@ -5,7 +5,7 @@ const often = { fr: (p: number) => (p >= 99 ? 'pratiquement toujours' : `dans ${
 /** Interface and feedback strings. The rule sentences return HTML (bold ending, coloured gender). */
 export const T = {
   fr: {
-    tabs: { g: 'Articles', s: 'Mots', r: 'Règles' }, mix: 'mélange', g: { m: 'masculin', f: 'féminin' } as Record<G, string>,
+    tabs: { g: 'Articles', s: 'Mots', r: 'Règles', p: 'Progrès' }, mix: 'mélange', g: { m: 'masculin', f: 'féminin' } as Record<G, string>,
     ok: 'Juste', bad: 'Pas tout à fait', bad2: 'À revoir', guessed: "J'ai deviné", willReturn: "D'accord : ce mot reviendra dans cette série.",
     showEn: 'Voir la traduction', hideEn: 'Cacher la traduction', next: 'Suivant', check: 'Vérifier',
     rule: (e: string, g: G, p: number) => `Les noms en <b>-${e}</b> sont <span class="g-${g}">${T.fr.g[g]}s</span> ${often.fr(p)}.`,
@@ -13,9 +13,10 @@ export const T = {
     noRule: (c: string) => `Pas de terminaison fiable ici : à retenir avec son article, <b>${c}</b>.`,
     pRule: (e: string) => `suit la règle -${e}`, pExc: (e: string) => `exception à la règle -${e}`, pNone: 'pas de règle',
     vowel: "Devant une voyelle ou un h muet, l' cache le genre : ici on choisit un / une.",
+    round: 'Cette série', nextReview: 'Prochaine révision', retrySoon: 'À reprendre dans cette série', reviewNow: 'Réviser', summary: (n: number, m: number) => `${n} mots pratiqués · ${m} ont demandé un nouvel essai`,
     first: 'justes du premier coup', review: 'À revoir', perfect: 'Sans faute !',
-    more: (n: number) => `Continuer · encore ${n}`, doneToday: "C'est tout pour aujourd'hui.", extra: '10 nouveaux mots de plus',
-    nothing: 'Rien à réviser pour le moment.', comeBack: 'Les prochains mots reviendront quand ils seront sur le point d’être oubliés.',
+    more: (n: number) => `Continuer · encore ${n}`, doneToday: "Tu choisis quand continuer.", extra: 'Continuer · jusqu’à 10 nouveaux mots',
+    nothing: 'Rien à réviser pour le moment.', comeBack: 'Les mots reviendront à leur prochaine date de révision.',
     newWord: 'nouveau', later: (n: number) => `puis ${n} autres`,
     your: 'Ta réponse', word: 'Mot', article: 'Article', artWrong: 'compte pour le genre, pas pour le sens',
     noArt: "pas d'article : essaie avec un / une", elide: "l' cache le genre : essaie avec un / une", accents: 'Attention aux accents :',
@@ -32,7 +33,7 @@ export const T = {
     version: 'Version', data: 'liste de mots', theme: 'Thème clair / sombre', sw: 'Suisse', levels: 'Niveaux',
   },
   en: {
-    tabs: { g: 'Articles', s: 'Words', r: 'Rules' }, mix: 'mixed', g: { m: 'masculine', f: 'feminine' } as Record<G, string>,
+    tabs: { g: 'Articles', s: 'Words', r: 'Rules', p: 'Progress' }, mix: 'mixed', g: { m: 'masculine', f: 'feminine' } as Record<G, string>,
     ok: 'Correct', bad: 'Not quite', bad2: 'Review this one', guessed: 'I guessed', willReturn: 'OK: this word will come back in this round.',
     showEn: 'Show translation', hideEn: 'Hide translation', next: 'Next', check: 'Check',
     rule: (e: string, g: G, p: number) => `Nouns ending in <b>-${e}</b> are <span class="g-${g}">${T.en.g[g]}</span> ${often.en(p)}.`,
@@ -40,9 +41,10 @@ export const T = {
     noRule: (c: string) => `No reliable ending here: learn it together with its article, <b>${c}</b>.`,
     pRule: (e: string) => `follows the -${e} pattern`, pExc: (e: string) => `exception to the -${e} pattern`, pNone: 'no pattern',
     vowel: "Before a vowel or silent h, l' hides the gender, so here you choose un / une.",
+    round: 'This round', nextReview: 'Next review', retrySoon: 'Another attempt in this round', reviewNow: 'Review', summary: (n: number, m: number) => `${n} words practised · ${m} needed another attempt`,
     first: 'right first time', review: 'To review', perfect: 'No mistakes!',
-    more: (n: number) => `Continue · ${n} more`, doneToday: "That's all for today.", extra: '10 more new words',
-    nothing: 'Nothing to review right now.', comeBack: 'Words come back when you are about to forget them.',
+    more: (n: number) => `Continue · ${n} more`, doneToday: "Continue whenever you like.", extra: 'Continue · up to 10 new words',
+    nothing: 'Nothing to review right now.', comeBack: 'Words return on their next scheduled review date.',
     newWord: 'new', later: (n: number) => `then ${n} more`,
     your: 'Your answer', word: 'Word', article: 'Article', artWrong: 'counts against gender, not meaning',
     noArt: 'no article: try it with un / une', elide: "l' hides the gender: try it with un / une", accents: 'Mind the accents:',

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.0 — 2026-11-14
+
+- Add a Progress tab with separate gender/meaning review counts, a seven-day forecast, and a searchable word list with review dates.
+- Replace daily quotas with on-demand review rounds and batches of up to 10 new words.
+- Show words practised and retries in round summaries, label round progress, and show next review dates after answers.
+
 ## 0.1.2 — 2026-11-14
 
 - Use purple for feminine and teal for masculine in both themes, keeping gender distinct from red error feedback.

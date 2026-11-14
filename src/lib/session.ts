@@ -11,11 +11,11 @@ export const GAP = 4;         // a missed card comes back this many cards later
  */
 export function startRound(
   skill: Skill, pool: Word[], byId: Map<string, Word>, cards: Record<string, Rec>, retry: string[],
-  perDay: number, now = new Date(), extra = 0,
+  batchSize: number, now = new Date(), extra = 0,
 ): { q: Item[]; left: number; total: number } {
   const owed = retry.map(id => byId.get(id)).filter((w): w is Word => !!w);
   const owedIds = new Set(owed.map(w => w.id));
-  const planned = plan(skill, pool, cards, perDay, now, extra).queue.filter(it => !owedIds.has(it.w.id));
+  const planned = plan(skill, pool, cards, batchSize, now, extra).queue.filter(it => !owedIds.has(it.w.id));
   const q = planned.slice(0, ROUND);
   const total = q.length;
   q.splice(Math.min(GAP, q.length), 0, ...owed.map(w => ({ w, isNew: false, rep: true })));

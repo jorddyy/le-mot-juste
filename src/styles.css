@@ -115,3 +115,19 @@ input[type=number]{font:inherit;width:5em;padding:6px 8px;border:1px solid var(-
 @keyframes in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 @media (max-width:400px){h1{font-size:1.3rem}.ver{display:none}}
+/* Progress stays descriptive: no daily targets or completion bars. */
+.seg{flex-wrap:wrap}
+.seg button{padding-inline:8px}
+.skill-progress{border-top:1px solid var(--line);padding-top:16px}
+.skill-progress dl{display:grid;gap:6px;margin:12px 0}
+.skill-progress dl div{display:flex;justify-content:space-between;gap:12px}
+.skill-progress dd{margin:0;font-weight:700;font-variant-numeric:tabular-nums}
+button:disabled{opacity:.55;cursor:default}
+.forecast th{text-align:left;font-size:.85rem}
+.forecast td:first-child{font:inherit;white-space:normal;width:auto}
+.word-search{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font:inherit}
+.word-progress{list-style:none;padding:0;margin:0}
+.word-progress>li{padding:16px 0;border-top:1px solid var(--line)}
+.track-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:10px;font-size:.85rem;overflow-wrap:anywhere}
+.track-grid p{margin:4px 0;color:var(--muted)}
+.track-grid summary{cursor:pointer}

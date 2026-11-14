@@ -49,19 +49,17 @@ export function pickNew(unseen: Word[], n: number): Word[] {
   return out;
 }
 
-/** Today's queue for one skill: due reviews (most overdue first), with the new words spread through them. */
-export function plan(skill: Skill, pool: Word[], cards: Record<string, Rec>, perDay: number, now = new Date(), extra = 0): Plan {
-  const t = now.getTime(), start = dayStart(now);
+/** The next queue for one skill: due reviews (most overdue first), with the new words spread through them. */
+export function plan(skill: Skill, pool: Word[], cards: Record<string, Rec>, batchSize: number, now = new Date(), extra = 0): Plan {
+  const t = now.getTime();
   const due: Word[] = [], unseen: Word[] = [];
-  let today = 0;
   for (const w of pool) {
     const r = cards[key(w, skill)];
     if (!r) { unseen.push(w); continue; }
-    if (r.first >= start) today++;
     if (new Date(r.c.due).getTime() <= t) due.push(w);
   }
   due.sort((a, b) => new Date(cards[key(a, skill)].c.due).getTime() - new Date(cards[key(b, skill)].c.due).getTime());
-  const fresh = pickNew(unseen, Math.max(0, perDay - today) + extra);
+  const fresh = pickNew(unseen, Math.max(0, batchSize) + extra);
   const queue: Item[] = [];
   for (let a = 0, b = 0; a < due.length || b < fresh.length;) {
     if (b < fresh.length && (a >= due.length || b * due.length <= a * fresh.length)) queue.push({ w: fresh[b++], isNew: true });

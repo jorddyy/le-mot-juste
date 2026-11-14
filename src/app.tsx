@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import { Progress } from './progress';
 import { PAIRS } from './lib/articles';
 import { T } from './lib/i18n';
 import { addRetry, dropRetry } from './lib/session';
 import { exportAll, importAll, load, logEvent, onWriteError, resetAll, saveCards, saveRetry, saveSettings } from './lib/store';
-import { DEFAULTS, LEVELS, type ArtMode, type G, type Lang, type Level, type Rec, type Retry, type Rule, type Settings, type Word } from './lib/types';
+import { DEFAULTS, LEVELS, type ArtMode, type G, type Lang, type Level, type Rec, type Retry, type Rule, type Settings, type Skill, type Word } from './lib/types';
 import { isDark } from './lib/validate';
 import { Chunk, Trainer, type Ctx, type St } from './trainer';
 
 declare const __BUILD__: { version: string; commit: string; time: string };
-type Tab = 'g' | 's' | 'r';
+type Tab = 'g' | 's' | 'r' | 'p';
 interface Data { version: string; words: Word[]; rules: Rule[]; source: string }
 
 async function fetchData(): Promise<Data> {
@@ -66,6 +67,7 @@ export function App() {
   const [err, setErr] = useState(false);
   const [settings, setSettings] = useState<Settings>(DEFAULTS);
   const [persistent, setPersistent] = useState(true);
+  const [reviewOnly, setReviewOnly] = useState(false);
   const [tab, setTab] = useState<Tab>('g');
   const [, bump] = useState(0);
   const [saveErr, setSaveErr] = useState(false);
@@ -106,7 +108,11 @@ export function App() {
     },
   };
   const dark = isDark(settings.theme, matchMedia('(prefers-color-scheme: dark)').matches);
-  const tkey = `${tab}|${settings.levels.join()}|${settings.newG}|${settings.newS}`;
+  const tkey = `${tab}|${settings.levels.join()}|${reviewOnly}`;
+  const launch = (sk: Skill, reviews: boolean) => {
+    sessions.current = {};
+    setReviewOnly(reviews); setTab(sk);
+  };
   const toggleLevel = (l: Level) => {
     const has = settings.levels.includes(l);
     if (has && settings.levels.length === 1) return;
@@ -125,9 +131,7 @@ export function App() {
     try { await importAll(JSON.parse(await f.text())); alert(L.imported); location.reload(); } catch { alert(L.badFile); }
   };
   const doReset = async () => { if (confirm(L.resetAsk)) { await resetAll(); location.reload(); } };
-  const num = (k: 'newG' | 'newS') => (
-    <input type="number" min={0} max={200} value={settings[k]} onChange={e => set({ [k]: Math.max(0, Math.min(200, Number((e.target as HTMLInputElement).value) || 0)) })} />
-  );
+
 
   return (
     <main>
@@ -139,10 +143,10 @@ export function App() {
         <Seg small value={settings.lang} options={[['fr', 'FR'], ['en', 'EN']]} onChange={(lang: Lang) => set({ lang })} />
         <button class="round" aria-label={L.settings} onClick={() => dialog.current?.showModal()}>⚙</button>
       </header>
-      <Seg value={tab} options={[['g', L.tabs.g], ['s', L.tabs.s], ['r', L.tabs.r]]} onChange={(t: Tab) => setTab(t)} />
+      <Seg value={tab} options={[['g', L.tabs.g], ['s', L.tabs.s], ['r', L.tabs.r], ['p', L.tabs.p]]} onChange={(t: Tab) => setTab(t)} />
       {!persistent && <p class="warn">{L.noSave}</p>}
       {saveErr && <p class="warn">{L.saveFailed} <button class="linkish" onClick={doExport}>{L.exportB}</button></p>}
-      {tab !== 'r' && (
+      {(tab === 'g' || tab === 's') && (
         <div class="controls">
           <div class="chips" role="group" aria-label={L.levels}>
             {LEVELS.map(l => <button key={l} class="chip" aria-pressed={settings.levels.includes(l)} onClick={() => toggleLevel(l)}>{l}</button>)}
@@ -152,12 +156,11 @@ export function App() {
       )}
       {tab === 'r'
         ? <Rules data={data} ctx={ctx} />
-        : <Trainer key={tkey} skill={tab} pool={pool} ctx={ctx} saved={sessions.current[tkey]} onState={s => { sessions.current = { ...sessions.current, [tkey]: s }; }} />}
+        : tab === 'p' ? <Progress words={data.words} pool={pool} ctx={ctx} launch={launch} />
+        : <Trainer reviewOnly={reviewOnly} key={tkey} skill={tab} pool={pool} ctx={ctx} saved={sessions.current[tkey]} onState={s => { sessions.current = { ...sessions.current, [tkey]: s }; }} />}
 
       <dialog ref={dialog} onClose={() => bump(n => n + 1)}>
         <h2>{L.settings}</h2>
-        <label>{L.newG}{num('newG')}</label>
-        <label>{L.newS}{num('newS')}</label>
         <p class="note">{L.seen(started('g'), started('s'), data.words.length)}</p>
         <div class="row wrap">
           <button class="ghost" onClick={doExport}>{L.exportB}</button>

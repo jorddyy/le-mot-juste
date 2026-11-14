@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { PAIRS, pickPair, type Pair } from './lib/articles';
 import type { Strings } from './lib/i18n';
 import { key, Rating, review, type Grade, type Item } from './lib/sched';
+import { progress } from './lib/progress';
 import { GAP, startRound } from './lib/session';
 import { checkAnswer, type Check } from './lib/text';
 import type { G, LogEvent, Rec, Retry, Rule, Settings, Skill, Word } from './lib/types';
@@ -44,11 +45,11 @@ function ruleHtml(w: Word, pair: Pair, ctx: Ctx): string {
   return !r ? ctx.L.noRule(c) : r.g === w.g ? ctx.L.rule(r.end, r.g, r.pct) : ctx.L.exc(r.end, r.g, r.pct, c);
 }
 
-export function Trainer({ skill, pool, ctx, saved, onState }: { skill: Skill; pool: Word[]; ctx: Ctx; saved?: St; onState?: (s: St) => void }) {
+export function Trainer({ skill, pool, ctx, saved, onState, reviewOnly = false }: { reviewOnly?: boolean; skill: Skill; pool: Word[]; ctx: Ctx; saved?: St; onState?: (s: St) => void }) {
   const { L, settings, cards } = ctx;
   const pairFor = (w: Word) => (skill === 'g' ? pickPair(w, settings.art) : PAIRS.un);
-  const mk = (extra = 0): St => {
-    const { q, left, total } = startRound(skill, pool, ctx.byId, cards, ctx.retry[skill], skill === 'g' ? settings.newG : settings.newS, new Date(), extra);
+  const mk = (newCount = reviewOnly ? 0 : 10): St => {
+    const { q, left, total } = startRound(skill, pool, ctx.byId, cards, ctx.retry[skill], newCount, new Date());
     return {
       q, i: 0, ans: null, done: !q.length, first: 0, total, miss: [], left,
       showEn: false, revealed: false, pair: q[0] ? pairFor(q[0].w) : PAIRS.un,
@@ -145,22 +146,25 @@ export function Trainer({ skill, pool, ctx, saved, onState }: { skill: Skill; po
 
   // ---------- end of a round ----------
   if (st.done) {
-    const again = (extra = 0) => setSt(mk(extra));
+    const again = (newCount = 0) => setSt(mk(newCount));
+    const counts = progress([...ctx.byId.values()], pool, cards, ctx.retry, skill);
+    const practised = new Set(st.q.map(it => it.w.id)).size;
+    const hasNew = pool.some(wd => !cards[key(wd, skill)]);
     return (
       <>
         <div class="progWrap"><div class="progress"><i style={{ width: '100%' }} /></div></div>
         <section class="card">
-          {st.total ? <>
-            <div class="score">{st.first} / {st.total}</div>
-            <p class="center muted tight">{L.first}</p>
+          {practised ? <>
+            <p class="def center">{L.summary(practised, new Set([...st.miss.map(wd => wd.id), ...st.q.filter(it => it.rep).map(it => it.w.id)]).size)}</p>
             {st.miss.length ? <div><b>{L.review}</b>
               <ul class="miss">{st.miss.map(m => <li key={m.id}><span><Chunk w={m} mark /></span><span class="note">{m.en} <Pill w={m} ctx={ctx} /></span></li>)}</ul>
             </div> : <p class="center"><b>{L.perfect}</b></p>}
           </> : <><p class="def center">{L.nothing}</p><p class="center muted tight">{L.comeBack}</p></>}
-          {st.left > 0
-            ? <button class="primary" ref={nextBtn} onClick={() => again()}>{L.more(st.left)}</button>
-            : <>{st.total > 0 && <p class="center muted tight">{L.doneToday}</p>}
-              <button class={st.total ? 'ghost' : 'primary'} ref={nextBtn} onClick={() => again(10)}>{L.extra}</button></>}
+          {counts.next && <p class="note center">{L.nextReview}: {new Date(counts.next).toLocaleString(ctx.lang, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>}
+          <div class="row wrap">
+            {counts.ready > 0 && <button class="primary" ref={nextBtn} onClick={() => again()}>{L.reviewNow} · {counts.ready}</button>}
+            {hasNew && <button class={counts.ready ? 'ghost' : 'primary'} ref={!counts.ready ? nextBtn : undefined} onClick={() => again(10)}>{L.extra}</button>}
+          </div>
         </section>
       </>
     );
@@ -195,7 +199,7 @@ export function Trainer({ skill, pool, ctx, saved, onState }: { skill: Skill; po
         <div class="ex">{w.ex}{st.showEn && <div class="en">{w.exEn}</div>}</div>
         {note && <div class="note">{note}</div>}
       </div>
-      {a.guessed && <div class="note center">{L.willReturn}</div>}
+      <div class="note center">{ctx.retry[skill].includes(w.id) ? L.retrySoon : cards[key(w, skill)] ? `${L.nextReview}: ${new Date(cards[key(w, skill)].c.due).toLocaleString(ctx.lang, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}` : ''}</div>
       <div class="row">
         {skill === 'g' && a.ok && !a.guessed && <button class="ghost" onClick={guessed}>{L.guessed}</button>}
         <button class="primary" ref={nextBtn} onClick={next}>{L.next} <kbd>↵</kbd></button>
@@ -258,7 +262,7 @@ export function Trainer({ skill, pool, ctx, saved, onState }: { skill: Skill; po
     <>
       <div class="progWrap">
         <div class="progress"><i style={{ width: `${(100 * st.i) / st.q.length}%` }} /></div>
-        <span class="count">{st.i + 1} / {st.q.length}{st.left > 0 && ` · ${L.later(st.left)}`}</span>
+        <span class="count">{L.round} · {st.i + 1} / {st.q.length}{st.left > 0 && ` · ${L.later(st.left)}`}</span>
       </div>
       <section class={`card ${answered ? w.g : ''}`} aria-live="polite">{body}</section>
     </>

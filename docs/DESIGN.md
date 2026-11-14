@@ -24,7 +24,8 @@ Two trainers over one word list. Every noun has two independent memory tracks:
 
 ## Sessions
 
-- Daily plan per skill: due reviews (most overdue first) with new words spread through them.
+- On-demand plan per skill: due reviews (most overdue first) with new words spread through them.
+  No daily quotas: choose reviews only or another batch of up to 10 new words.
   New words: round-robin over the selected levels, most frequent first, one themed word in three.
 - Rounds of 15. A missed card returns 4 cards later until answered correctly; only the first
   answer of a session is graded. The study day rolls over at 04:00.
@@ -53,3 +54,10 @@ examples and CEFR levels are model-written and only spot-checked.
 - English translations, French definitions first. UI and feedback switchable FR/EN.
 - Swiss and France French both: Swiss words carry the `ch` tag and a note with the French word.
 - Audio removed (browser voices are poor); pre-generated audio is a later option.
+
+## Progress
+
+Progress shows separate gender/meaning counts, pending retries, next review dates, a seven-day
+forecast, and a searchable list of introduced words with schedule summaries. Review counts respect
+selected levels; pending retries always count. No daily targets or mastery claims. Legacy daily-limit
+settings remain in backups for compatibility but are unused.

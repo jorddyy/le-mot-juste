@@ -21,7 +21,7 @@ export interface Rule { end: string; g: G; pct: number; n: number; examples: str
 export interface Rec { c: Card; first: number }
 export interface Settings {
   lang: Lang; theme: '' | 'light' | 'dark'; levels: Level[]; art: ArtMode;
-  /** New cards per day for the article trainer and for the word trainer. */
+  /** Legacy daily limits retained for backup compatibility; no longer used by the trainer. */
   newG: number; newS: number;
 }
 /** Pending retries per skill: ids of words missed and not yet answered correctly. */

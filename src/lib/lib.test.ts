@@ -53,14 +53,14 @@ describe('scheduling', () => {
     expect(pickNew(pool, 6).map(x => x.l)).toEqual(['a', 'x', 'b', 'y', 'p', 'c']);
     expect(pickNew(pool, 2)).toHaveLength(2);
   });
-  it('plans due reviews plus the daily allowance of new words', () => {
+  it('plans due reviews plus the requested batch of new words', () => {
     const pool = [w('a', 'm'), w('b', 'm'), w('c', 'm'), w('d', 'm')];
     const yesterday = new Date(2026, 10, 13, 12);
     const cards = { [key(pool[0], 'g')]: review(undefined, Rating.Again, yesterday), [key(pool[1], 'g')]: review(undefined, Rating.Good, now) };
     const p = plan('g', pool, cards, 2, new Date(2026, 10, 14, 18));
     expect(p.due).toBe(1);          // a: missed yesterday, due again
-    expect(p.fresh).toBe(1);        // b was already introduced today, so one new word is left
-    expect(p.queue.map(i => i.w.l).sort()).toEqual(['a', 'c']);
+    expect(p.fresh).toBe(2);        // earlier work does not reduce the requested batch
+    expect(p.queue.map(i => i.w.l).sort()).toEqual(['a', 'c', 'd']);
     expect(plan('g', pool, cards, 2, new Date(2026, 10, 14, 18), 10).fresh).toBe(2);
   });
 });
