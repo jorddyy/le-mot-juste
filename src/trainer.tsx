@@ -168,6 +168,9 @@ export function Trainer({ skill, pool, ctx, saved, onState, reviewOnly = false }
     const counts = progress([...ctx.byId.values()], pool, cards, ctx.retry, skill);
     const practised = new Set(st.q.map(it => it.w.id)).size;
     const hasNew = pool.some(wd => !cards[key(wd, skill)]);
+    // What "review" would start: one round, out of everything waiting.
+    const peek = counts.ready > 0 ? startRound(skill, pool, ctx.byId, cards, ctx.retry[skill], 0, new Date()) : undefined;
+    const waiting = peek ? peek.q.length + peek.left : 0;
     return (
       <>
         <div class="progWrap"><div class="progress"><i style={{ width: '100%' }} /></div></div>
@@ -181,8 +184,8 @@ export function Trainer({ skill, pool, ctx, saved, onState, reviewOnly = false }
           </> : <><p class="def center">{L.nothing}</p><p class="center muted tight">{L.comeBack}</p></>}
           {counts.next && <p class="note center">{L.nextReview}: {new Date(counts.next).toLocaleString(ctx.lang, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>}
           <div class="row wrap">
-            {counts.ready > 0 && <button class="primary" ref={nextBtn} onClick={() => again()}>{L.reviewNow} · {counts.ready}</button>}
-            {hasNew && <button class={counts.ready ? 'ghost' : 'primary'} ref={!counts.ready ? nextBtn : undefined} onClick={() => again(10)}>{L.extra}</button>}
+            {!!peek?.q.length && <button class="primary" ref={nextBtn} onClick={() => again()}>{L.reviewNow(peek.q.length, waiting)}</button>}
+            {hasNew && <button class={peek?.q.length ? 'ghost' : 'primary'} ref={!peek?.q.length ? nextBtn : undefined} onClick={() => again(10)}>{L.extra}</button>}
           </div>
         </section>
       </>

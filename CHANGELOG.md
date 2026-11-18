@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.6 — 2026-11-18
+
+- The review button now says how many cards the round holds and how many are waiting in all
+  ("Réviser 15 · 109 en attente"), instead of showing only the total.
+
 ## 0.4.5 — 2026-11-14
 
 - A round already in progress no longer shows a noun you have just answered in the other tab.
