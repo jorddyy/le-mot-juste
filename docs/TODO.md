@@ -1,6 +1,8 @@
 # TODO
 
 ## Next
+- [ ] Run `npm run data` with Lexique and commit `public/data`: 0.4.7's rule exclusions (`not`, `mixed`, `grp`)
+      only show once the data is rebuilt. Check the new table in `build/report.md` first.
 - [x] Deploy: GitHub Pages via `.github/workflows/pages.yml` (2026-11-14).
 - [x] Offline support: `vite-plugin-pwa`, prompt-style updates via `src/lib/update.ts` (2026-11-14). Test on a real phone.
 - [ ] Review the model-written definitions/examples; fix anything odd found while using the app.

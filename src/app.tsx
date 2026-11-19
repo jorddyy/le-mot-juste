@@ -4,22 +4,22 @@ import { PAIRS } from './lib/articles';
 import { T } from './lib/i18n';
 import { addRetry, dropRetry } from './lib/session';
 import { exportAll, importAll, load, logEvent, loadSync, mergeLog, onWriteError, resetAll, saveCards, saveFlags, saveRetry, saveSettings, saveSync } from './lib/store';
-import { DEFAULTS, LEVELS, type ArtMode, type G, type Lang, type Level, type Rec, type Retry, type Rule, type Settings, type Skill, type Word } from './lib/types';
+import { DEFAULTS, LEVELS, type ArtMode, type G, type Lang, type Level, type Rec, type Mixed, type Retry, type Rule, type Settings, type Skill, type Word } from './lib/types';
 import { reviewedAt, syncOnce, type SyncConf } from './lib/sync';
 import { applyUpdate, onUpdateReady } from './lib/update';
 import { isDark, SCHEMA } from './lib/validate';
-import { Chunk, Trainer, type Ctx, type St } from './trainer';
+import { Chunk, lean, Trainer, type Ctx, type St } from './trainer';
 
 declare const __BUILD__: { version: string; commit: string; time: string };
 type Tab = 'g' | 's' | 'r' | 'p';
-interface Data { version: string; words: Word[]; rules: Rule[]; source: string }
+interface Data { version: string; words: Word[]; rules: Rule[]; mixed: Mixed[]; source: string }
 
 async function fetchData(): Promise<Data> {
   const base = import.meta.env.BASE_URL;
   const [w, r] = await Promise.all([fetch(`${base}data/words.json`), fetch(`${base}data/rules.json`)]);
   if (!w.ok || !r.ok) throw new Error('data');
   const words = await w.json(), rules = await r.json();
-  return { version: words.version, words: words.words, rules: rules.rules, source: rules.source };
+  return { version: words.version, words: words.words, rules: rules.rules, mixed: rules.mixed ?? [], source: rules.source };
 }
 
 function Seg<V extends string>({ value, options, onChange, small, label, navigation }: { value: V; options: [V, string][]; onChange: (v: V) => void; small?: boolean; label?: string; navigation?: boolean }) {
@@ -30,8 +30,11 @@ function Seg<V extends string>({ value, options, onChange, small, label, navigat
   );
 }
 
+const MIN_SHOWN = 5;   // smaller families of nouns are left off the rules page (the card still explains them)
+
 function Rules({ data, ctx }: { data: Data; ctx: Ctx }) {
   const { L } = ctx;
+  const apart = (r: Rule) => (r.not ?? []).filter(e => data.rules.some(x => x.end === e) || data.mixed.some(m => m.end === e && m.n >= MIN_SHOWN));
   const fake = (l: string, g: G): Word => ({ l, g } as Word);
   const block = (g: G) => (
     <>
@@ -48,6 +51,29 @@ function Rules({ data, ctx }: { data: Data; ctx: Ctx }) {
               <td>
                 {ex.map((w, k) => <span key={w.l}>{k > 0 && ', '}<Chunk w={{ ...w, end: r.end }} pair={PAIRS.un} mark /></span>)}
                 {r.exceptions.length > 0 && <span class="exc">{L.but} : {r.exceptions.slice(0, 5).map((l, k) => <span key={l}>{k > 0 && ', '}<Chunk w={fake(l, other)} /></span>)}</span>}
+                {apart(r).length > 0 && <span class="exc">{L.apart} : {apart(r).map(e => `-${e}`).join(', ')}</span>}
+              </td>
+            </tr>
+          );
+        })}
+      </table>
+    </>
+  );
+  const shown = data.mixed.filter(m => m.n >= MIN_SHOWN);
+  const mixedBlock = shown.length > 0 && (
+    <>
+      <h2><i class="mixed" />{L.mixedHead}</h2>
+      <p class="note">{L.mixedIntro}</p>
+      <table>
+        {shown.map(m => {
+          const { g, pct } = lean(m);
+          return (
+            <tr key={m.end}>
+              <td>-{m.end}</td>
+              <td class="pct">{pct} % <span class={`g-${g}`}>{g}</span></td>
+              <td>
+                {[...m.fem.slice(0, 2).map(l => fake(l, 'f')), ...m.masc.slice(0, 2).map(l => fake(l, 'm'))].map((w, k) => <span key={w.l}>{k > 0 && ', '}<Chunk w={w} pair={PAIRS.un} /></span>)}
+                <span class="exc">{L.apartFrom(m.in, m.rules)}</span>
               </td>
             </tr>
           );
@@ -58,7 +84,7 @@ function Rules({ data, ctx }: { data: Data; ctx: Ctx }) {
   return (
     <section class="card">
       <div class="def">{L.rulesIntro}</div>
-      {block('f')}{block('m')}
+      {block('f')}{block('m')}{mixedBlock}
       <div class="note">{L.rulesFoot('Lexique 3.83')}</div>
     </section>
   );
@@ -161,6 +187,7 @@ export function App() {
   const set = (patch: Partial<Settings>) => { const s = { ...settings, ...patch }; setSettings(s); saveSettings(s); };
   const pool = useMemo(() => (data ? data.words.filter(w => settings.levels.includes(w.lv)) : []), [data, settings.levels]);
   const rules = useMemo(() => new Map((data?.rules ?? []).map(r => [r.end, r])), [data]);
+  const mixed = useMemo(() => new Map((data?.mixed ?? []).map(m => [m.end, m])), [data]);
   const byId = useMemo(() => new Map((data?.words ?? []).map(w => [w.id, w])), [data]);
 
   if (err) return <main><p class="center">{L.loadErr}</p></main>;
@@ -176,7 +203,7 @@ export function App() {
   const ctx: Ctx = {
     flags,
     flag: (id, f) => { const next = { ...flags, [id]: f ?? { t: Date.now(), note: '', skill: flags[id]?.skill ?? 'g', del: true } }; setFlags(next); saveFlags(next); tell({ t: 'flags', flags: next }); },
-    L, lang: settings.lang, settings, cards: cards.current, rules, byId, retry: retry.current,
+    L, lang: settings.lang, settings, cards: cards.current, rules, mixed, byId, retry: retry.current,
     save: (k, rec) => { cards.current[k] = rec; saveCards(cards.current); tell({ t: 'cards', cards: { [k]: rec } }); },
     log: logEvent,
     owe: (sk, id, owed) => {

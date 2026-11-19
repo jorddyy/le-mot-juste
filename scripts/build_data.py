@@ -86,20 +86,111 @@ def build_rules(lex):
         end = ending_of(lemma, cands)
         if end:
             groups[end].append((lemma, next(iter(e["g"])), e["f"]))
-    rules = []
-    for end, items in groups.items():
+
+    def lean(items):
         n = len(items)
         nf = sum(1 for _, g, _ in items if g == "f")
         g = "f" if nf * 2 >= n else "m"
-        share = (nf if g == "f" else n - nf) / n
-        if n < MIN_N or share < MIN_SHARE:
+        return g, (nf if g == "f" else n - nf) / n
+
+    def is_rule(end):
+        return len(groups[end]) >= MIN_N and lean(groups[end])[1] >= MIN_SHARE
+
+    # A longer ending too small to be a rule but agreeing with the rule above it (-ier under -r,
+    # both masculine) is counted in that rule: listing it apart would only look like a contradiction.
+    alias = {}
+    for end in sorted(groups, key=len, reverse=True):
+        if is_rule(end):
             continue
+        up = ending_of(end, cands)
+        while up and up not in groups:
+            up = ending_of(up, cands)
+        g, share = lean(groups[end])
+        if up and is_rule(up) and g == lean(groups[up])[0] and share >= MIN_SHARE:
+            groups[up].extend(groups.pop(end))
+            alias[end] = up
+    for end, up in list(alias.items()):  # follow chains of folds
+        while up in alias:
+            up = alias[up]
+        alias[end] = up
+
+    rules = []
+    for end, items in groups.items():
+        if not is_rule(end):
+            continue
+        g, share = lean(items)
         exc = sorted((i for i in items if i[1] != g and i[2] >= 3 and i[0] not in STOP), key=lambda i: -i[2])[:8]
         ex = sorted((i for i in items if i[1] == g), key=lambda i: -i[2])[:4]
-        rules.append({"end": end, "g": g, "pct": round(100 * share), "n": n,
+        rules.append({"end": end, "g": g, "pct": round(100 * share), "n": len(items),
                       "examples": [i[0] for i in ex], "exceptions": [i[0] for i in exc]})
     rules.sort(key=lambda r: (r["g"], -r["pct"], -r["n"]))
-    return rules, groups
+    return rules, groups, alias
+
+
+def carve_outs(rules, groups, cands, alias):
+    """Each word counts under its longest candidate ending only, so a rule like -é (masculine)
+    does not cover -té or -ité nouns: those are measured on their own. Make that visible.
+
+    Returns (excluded, mixed, family):
+      excluded  rule ending -> the longer endings measured apart from it, nearest first (-é: té, ée)
+      mixed     the excluded endings that are not rules themselves, with their gender split;
+                nouns under a longer rule (-ité inside -té) are left out of that split
+      family    candidate ending -> (rule, excluded ending) it falls under, for endings
+                that are not rules but sit inside one (rté -> (é, té))
+    """
+    by_end = {r["end"]: r for r in rules}
+    parent = {}
+    for c in cands:                     # endings folded into a rule are not steps of their own
+        p = ending_of(c, cands)
+        while p in alias:
+            p = ending_of(p, cands)
+        parent[c] = p
+
+    def path(c):                        # c, then its shorter candidate endings, nearest first
+        out = []
+        while c:
+            out.append(c)
+            c = parent[c]
+        return out
+
+    family = {}
+    for c in cands:
+        p = path(c)
+        k = next((i for i, x in enumerate(p) if x in by_end), None)
+        if k:                           # a rule further up, and c is not covered by a closer rule
+            family[c] = (p[k], p[k - 1])
+    excluded = defaultdict(set)
+    for end in groups:                  # only endings that real nouns fall under
+        p = path(end)
+        for i in range(1, len(p)):
+            if p[i] in by_end:
+                excluded[p[i]].add(p[i - 1])
+                break
+    stats = {}
+    for end, items in groups.items():
+        if end in family:
+            rule, c = family[end]
+            st = stats.setdefault(c, {"end": c, "in": rule, "n": 0, "f": 0, "_f": [], "_m": [], "rules": set()})
+            for lemma, g, f in items:
+                st["n"] += 1
+                st["f"] += g == "f"
+                if f >= 3 and lemma not in STOP:
+                    st["_" + g].append((f, lemma))
+    for r in by_end:                    # rules nested inside an excluded ending (-ité inside -té)
+        p = path(r)[1:]
+        for x in p:
+            if x in stats:
+                stats[x]["rules"].add(r)
+            if x in by_end:
+                break
+    mixed = []
+    for st in sorted(stats.values(), key=lambda st: -st["n"]):
+        mixed.append({"end": st["end"], "in": st["in"], "n": st["n"], "f": st["f"],
+                      "fem": [l for _, l in sorted(st["_f"], reverse=True)[:3]],
+                      "masc": [l for _, l in sorted(st["_m"], reverse=True)[:3]],
+                      "rules": sorted(st["rules"], key=lambda e: (len(e), e))})
+    excluded = {r: sorted(v, key=lambda e: (len(e), e)) for r, v in excluded.items()}
+    return excluded, mixed, family
 
 
 def source_hash(files):
@@ -114,12 +205,18 @@ def main():
     if not os.path.exists(LEX):
         sys.exit("raw/Lexique383.tsv is missing: download it from http://www.lexique.org/databases/Lexique383/Lexique383.tsv")
     lex = load_lexique()
-    rules, groups = build_rules(lex)
+    rules, groups, alias = build_rules(lex)
     rule_by_end = {r["end"]: r for r in rules}
     cands = sorted(set(ENDINGS), key=len, reverse=True)
+    excluded, mixed, family = carve_outs(rules, groups, cands, alias)
+    mixed_ends = {m["end"] for m in mixed}
+    for r in rules:
+        if excluded.get(r["end"]):
+            r["not"] = excluded[r["end"]]
 
     def rule_end(word):                 # the word's longest candidate ending, if that ending is a guideline
         e = ending_of(word, cands)
+        e = alias.get(e, e)
         return e if e in rule_by_end else ""
 
     flags = defaultdict(list)
@@ -170,6 +267,8 @@ def main():
                 flags["long definition"].append(l)
             end = rule_end(l)
             w = {"id": wid, "l": l, "g": e["g"], "lv": e["lv"], "end": end,
+                 **({"grp": family[own][1]} if not end and (own := ending_of(l, cands)) in family
+                    and family[own][1] in mixed_ends else {}),
                  "el": bool(re.match(r"[aeiouyàâéèêëîïôûœ]", l)) or h == "muet",
                  "def": e["def"], "en": e["en"], "ex": e["ex"], "exEn": e["exEn"], "tags": tags,
                  "_f": lx["f"] if lx else 0.0}
@@ -195,7 +294,7 @@ def main():
             fh.write('{"version":"%s","src":"%s","words":%s}\n' % (version, source_hash(files), body))
         with open(os.path.join(out, "rules.json"), "w", encoding="utf-8") as fh:
             json.dump({"source": "Lexique 3.83, noun lemmas with frequency >= %s per million" % MIN_FREQ,
-                       "rules": rules}, fh, ensure_ascii=False, separators=(",", ":"))
+                       "rules": rules, "mixed": mixed}, fh, ensure_ascii=False, separators=(",", ":"))
 
     # ---- report ----
     R = ["# Data build report", "", f"Data version `{version}` · {len(words)} nouns from {len(files)} source files", ""]
@@ -218,6 +317,10 @@ def main():
     R += [f"| -{r['end']} | {r['g']} | {r['pct']}% | {r['n']} | {', '.join(r['exceptions'])} |" for r in rules]
     rej = sorted(((e, len(i), max(sum(1 for x in i if x[1] == 'f'), sum(1 for x in i if x[1] == 'm')) / len(i))
                   for e, i in groups.items() if e not in rule_by_end and len(i) >= MIN_N), key=lambda x: -x[2])
+    R += ["", "## Measured apart from a rule (not rules themselves)", "",
+          "| ending | inside | nouns | f | feminine | masculine | rules inside |", "|---|---|---|---|---|---|---|"]
+    R += [f"| -{m['end']} | -{m['in']} | {m['n']} | {round(100 * m['f'] / m['n'])}% | {', '.join(m['fem'])} | {', '.join(m['masc'])} | {', '.join(m['rules'])} |" for m in mixed]
+    R += ["", "Our nouns per family: " + ", ".join(f"-{k} {v}" for k, v in Counter(w["grp"] for w in words if w.get("grp")).most_common())]
     R += ["", "Not reliable enough: " + ", ".join(f"-{e} {round(100*s)}% (n={n})" for e, n, s in rej), ""]
     random.seed(1)
     R += ["## Random sample", ""]

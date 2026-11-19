@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.7 — 2026-11-19
+
+- Ending rules no longer contradict each other. A rule's share only ever counted nouns whose own
+  ending is that one: -é (masculine) leaves out -té, so la fierté is not an exception to it. The
+  rules page now says what each rule leaves out ("à part : -té"), and a new "Pas de règle fiable"
+  section shows those endings with their real split (-té: mostly feminine, but un été, un côté).
+- On a card, a noun in such an ending says so ("Finit en -é, mais la règle -é ne compte pas les
+  noms en -té…") instead of a bare "pas de règle".
+- Short endings that agree with their rule (-ier, -oir under -r) are now counted in it.
+
 ## 0.4.6 — 2026-11-18
 
 - The review button now says how many cards the round holds and how many are waiting in all

@@ -100,7 +100,7 @@ ul.miss{margin:6px 0 0;padding:0;list-style:none}
 ul.miss li{padding:7px 0;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 10px;align-items:baseline}
 ul.miss li > span:first-child{font:600 1.1rem var(--serif)}
 h2{font:600 1.1rem var(--serif);margin:6px 0 0;display:flex;align-items:center;gap:8px}
-h2 i{width:10px;height:10px;border-radius:50%;display:inline-block}
+h2 i{width:10px;height:10px;border-radius:50%;display:inline-block} h2 i.mixed{background:linear-gradient(90deg,var(--m) 50%,var(--f) 50%)}
 table{border-collapse:collapse;width:100%}
 td{padding:7px 0;border-top:1px solid var(--line);vertical-align:top}
 td:first-child{font:600 1.1rem var(--serif);white-space:nowrap;padding-right:12px;width:1%}

@@ -5,11 +5,13 @@ import { dayStart, key, Rating, review, type Grade, type Item } from './lib/sche
 import { progress } from './lib/progress';
 import { GAP, startRound } from './lib/session';
 import { checkAnswer, type Check } from './lib/text';
-import type { Flag, G, LogEvent, Rec, Retry, Rule, Settings, Skill, Word } from './lib/types';
+import type { Flag, G, LogEvent, Mixed, Rec, Retry, Rule, Settings, Skill, Word } from './lib/types';
 
 /** What the trainers need from the app shell. `cards` is the live, mutable progress map. */
 export interface Ctx {
   L: Strings; lang: 'fr' | 'en'; settings: Settings; cards: Record<string, Rec>; rules: Map<string, Rule>;
+  /** Endings measured apart from a rule without being one (-té inside -é). */
+  mixed: Map<string, Mixed>;
   byId: Map<string, Word>; retry: Retry;
   /** Store a card's new schedule. */
   save: (k: string, rec: Rec) => void;
@@ -42,11 +44,17 @@ export function Chunk({ w, pair = basePair(w), mark = false }: { w: Word; pair?:
 /** Does the noun follow an ending guideline, break one, or have none? */
 export function Pill({ w, ctx }: { w: Word; ctx: Ctx }) {
   const r = ctx.rules.get(w.end);
-  if (!r) return <span class="pill none">{ctx.L.pNone}</span>;
+  if (!r) return <span class="pill none">{w.grp && ctx.mixed.has(w.grp) ? ctx.L.pMixed(w.grp) : ctx.L.pNone}</span>;
   return r.g === w.g ? <span class="pill">{ctx.L.pRule(w.end)}</span> : <span class="pill exc">{ctx.L.pExc(w.end)}</span>;
 }
+/** Which way an ending leans, and whether there are enough nouns to say so (the build needs 15 for a rule). */
+export function lean(m: Mixed): { g: G; pct: number; few: boolean } {
+  const g: G = m.f * 2 >= m.n ? 'f' : 'm';
+  return { g, pct: Math.round((100 * (g === 'f' ? m.f : m.n - m.f)) / m.n), few: m.n < 15 };
+}
 function ruleHtml(w: Word, pair: Pair, ctx: Ctx): string {
-  const r = ctx.rules.get(w.end), c = `${pair[w.g]} ${w.l}`;
+  const r = ctx.rules.get(w.end), c = `${pair[w.g]} ${w.l}`, m = w.grp ? ctx.mixed.get(w.grp) : undefined;
+  if (!r && m) { const { g, pct, few } = lean(m); return ctx.L.mixed(m.end, m.in, g, pct, few, c); }
   return !r ? ctx.L.noRule(c) : r.g === w.g ? ctx.L.rule(r.end, r.g, r.pct) : ctx.L.exc(r.end, r.g, r.pct, c);
 }
 

@@ -11,6 +11,8 @@ export interface Word {
   id: string; l: string; g: G; lv: Level;
   /** Ending guideline this noun falls under ('' if none); see rules.json. */
   end: string;
+  /** No rule, but the noun sits inside one (fierté: -té, inside -é): the ending it is measured under. */
+  grp?: string;
   /** True when the noun takes l' (vowel or silent h), which hides its gender. */
   el: boolean;
   def: string; en: string; ex: string; exEn: string; tags: string[];
@@ -18,7 +20,11 @@ export interface Word {
   /** Mass or one-of-a-kind noun (eau, soleil): never quizzed or shown with un/une. */
   unc?: boolean;
 }
-export interface Rule { end: string; g: G; pct: number; n: number; examples: string[]; exceptions: string[] }
+export interface Rule { end: string; g: G; pct: number; n: number; examples: string[]; exceptions: string[];
+  /** Longer endings measured apart from this one (-é: té, tié): the share above does not cover them. */
+  not?: string[] }
+/** An ending measured apart from a rule that is not reliable enough to be one itself. */
+export interface Mixed { end: string; in: string; n: number; f: number; fem: string[]; masc: string[]; rules: string[] }
 /** Saved state of one card: the FSRS card plus when it was first seen. */
 export interface Rec { c: Card; first: number }
 export interface Settings {

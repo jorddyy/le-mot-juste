@@ -14,8 +14,9 @@ from build_data import LEVELS, TAGS, source_hash  # noqa: E402
 
 errors = []
 data = json.load(open(os.path.join(ROOT, "public", "data", "words.json"), encoding="utf-8"))
-rules = json.load(open(os.path.join(ROOT, "public", "data", "rules.json"), encoding="utf-8"))["rules"]
-words, ends = data["words"], {r["end"] for r in rules}
+rdata = json.load(open(os.path.join(ROOT, "public", "data", "rules.json"), encoding="utf-8"))
+rules, mixed = rdata["rules"], rdata.get("mixed", [])
+words, ends, mixed_ends = data["words"], {r["end"] for r in rules}, {m["end"] for m in mixed}
 
 src = source_hash(glob.glob(os.path.join(ROOT, "data", "src", "*.json")))
 if data.get("src") != src:
@@ -38,11 +39,18 @@ for w in words:
         errors.append(f"{wid}: missing text")
     if w.get("end") and w["end"] not in ends:
         errors.append(f"{wid}: ending -{w['end']} is not in rules.json")
+    if w.get("grp") and (w.get("end") or w["grp"] not in mixed_ends or not w["l"].endswith(w["grp"])):
+        errors.append(f"{wid}: bad ending family -{w['grp']}")
     if any(t not in TAGS for t in w.get("tags", [])):
         errors.append(f"{wid}: unknown tag")
 for r in rules:
     if r.get("g") not in ("m", "f") or not 50 <= r.get("pct", 0) <= 100:
         errors.append(f"rule -{r.get('end')}: bad gender or share")
+    if any(not x.endswith(r["end"]) or x == r["end"] for x in r.get("not", [])):
+        errors.append(f"rule -{r['end']}: bad exclusion list")
+for m in mixed:
+    if m.get("in") not in ends or not m["end"].endswith(m["in"]) or not 0 <= m.get("f", -1) <= m.get("n", 0) or m["n"] < 1:
+        errors.append(f"mixed -{m.get('end')}: bad entry")
 
 if errors:
     sys.exit("DATA CHECK FAILED\n" + "\n".join("- " + e for e in errors[:40]))
